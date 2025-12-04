@@ -80,3 +80,58 @@
     @apply bg-black text-green-500 font-mono;
   }
 }
+
+/* AI Glow Animations */
+@keyframes aiGlow {
+  0%, 100% { 
+    text-shadow: 0 0 5px rgba(168, 85, 247, 0.5);
+    opacity: 0.9;
+  }
+  50% { 
+    text-shadow: 0 0 15px rgba(168, 85, 247, 0.8), 0 0 25px rgba(168, 85, 247, 0.4);
+    opacity: 1;
+  }
+}
+
+@keyframes psychedelicText {
+  0% { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+  16% { color: #ff0080; text-shadow: 0 0 10px #ff0080; }
+  33% { color: #ff8000; text-shadow: 0 0 10px #ff8000; }
+  50% { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+  66% { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+  83% { color: #8000ff; text-shadow: 0 0 10px #8000ff; }
+  100% { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+}
+
+@keyframes pixelGlitch {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2px, 1px); }
+  20% { transform: translate(2px, -1px); }
+  30% { transform: translate(-1px, 2px); }
+  40% { transform: translate(1px, -2px); }
+  50% { transform: translate(-2px, -1px); }
+  60% { transform: translate(2px, 1px); }
+  70% { transform: translate(1px, 2px); }
+  80% { transform: translate(-1px, -2px); }
+  90% { transform: translate(2px, 2px); }
+}
+
+@keyframes aiPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@layer utilities {
+  .animate-ai-glow {
+    animation: aiGlow 2s ease-in-out infinite;
+  }
+  .animate-ai-glow-slow {
+    animation: aiGlow 3s ease-in-out infinite;
+  }
+  .animate-psychedelic {
+    animation: psychedelicText 0.8s infinite, pixelGlitch 0.3s infinite;
+  }
+  .animate-ai-pulse {
+    animation: aiPulse 1s ease-in-out infinite;
+  }
+}

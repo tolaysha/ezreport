@@ -4,7 +4,9 @@
   "description": "Sprint report automation: CLI + Web Console",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/shared",
+    "packages/cli",
+    "packages/web"
   ],
   "scripts": {
     "dev": "npm run dev -w @ezreport/web",

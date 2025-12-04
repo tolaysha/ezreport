@@ -1,0 +1,54 @@
+/**
+ * API request/response types used across CLI and Web.
+ */
+
+import type { BasicBoardSprintData, SprintCardData } from './board';
+import type { SprintInfo } from './sprint';
+import type { VersionMeta } from './version';
+import type { StrategicAnalysis } from './analysis';
+import type { SprintReportStructured, NotionPageResult } from './report';
+import type { SprintDataValidationResult, SprintReportValidationResult } from './validation';
+
+// =============================================================================
+// Request Types
+// =============================================================================
+
+export interface SprintReportParams {
+  boardId?: string;
+  sprintId?: string;
+  sprintName?: string;
+  mockMode?: boolean;
+  skipAnalysis?: boolean;
+}
+
+export interface AnalyzeDataParams {
+  activeVersion?: VersionMeta;
+  currentSprint?: SprintCardData;
+  previousSprint?: SprintCardData;
+  mockMode?: boolean;
+}
+
+// =============================================================================
+// Response Types
+// =============================================================================
+
+export interface CollectDataResponse {
+  sprint?: Partial<SprintInfo>;
+  basicBoardData?: BasicBoardSprintData | null;
+  dataValidation?: SprintDataValidationResult | null;
+  logs?: string[];
+}
+
+export interface GenerateReportResponse {
+  sprint?: Partial<SprintInfo>;
+  report?: SprintReportStructured | null;
+  reportValidation?: SprintReportValidationResult | null;
+  notionPage?: NotionPageResult | null;
+  logs?: string[];
+}
+
+export interface AnalyzeResponse {
+  analysis?: StrategicAnalysis | null;
+  logs?: string[];
+}
+

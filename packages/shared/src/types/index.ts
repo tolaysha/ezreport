@@ -1,29 +1,34 @@
 /**
- * Re-export all types from shared package.
- * This file maintains backward compatibility with existing imports.
+ * Re-export all shared types.
  */
 
+// Sprint types
 export type {
-  // Sprint types
   SprintMeta,
   SprintIssue,
   GoalMatchLevel,
   SprintCardData,
   SprintInfo,
-  
-  // Version types
+} from './sprint';
+
+// Version types
+export type {
   VersionMeta,
   VersionBlockInfo,
-  
-  // Analysis types
+} from './version';
+
+// Analysis types
+export type {
   AlignmentLevel,
   VersionSprintAlignment,
   SprintTasksAlignment,
   DemoRecommendation,
   StrategicAnalysis,
   GoalAlignmentResult,
-  
-  // Report types
+} from './analysis';
+
+// Report types
+export type {
   SprintBlockInfo,
   NotDoneItem,
   AchievementItem,
@@ -33,12 +38,16 @@ export type {
   PMQuestionOrProposal,
   SprintReportStructured,
   NotionPageResult,
-  
-  // Board types
+} from './report';
+
+// Board types
+export type {
   BoardDataAvailability,
   BasicBoardSprintData,
-  
-  // Validation types
+} from './board';
+
+// Validation types
+export type {
   ValidationMessage,
   ValidationError,
   ValidationWarning,
@@ -46,11 +55,14 @@ export type {
   SprintDataValidationResult,
   PartnerReadinessAssessment,
   SprintReportValidationResult,
-  
-  // API types
+} from './validation';
+
+// API types
+export type {
   SprintReportParams,
   AnalyzeDataParams,
   CollectDataResponse,
   GenerateReportResponse,
   AnalyzeResponse,
-} from '@ezreport/shared';
+} from './api';
+

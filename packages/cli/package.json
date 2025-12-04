@@ -28,6 +28,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ezreport/shared": "*",
     "@notionhq/client": "^2.2.15",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
