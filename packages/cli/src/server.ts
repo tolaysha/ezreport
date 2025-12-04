@@ -22,8 +22,8 @@ import type {
   VersionMeta,
 } from '@ezreport/shared';
 
-import { runSprintReportWorkflow } from './services/sprintReportWorkflow';
 import { collectBasicBoardSprintData, performStrategicAnalysis } from './services/collectBasicBoardSprintData';
+import { generatePartnerReportMarkdown } from './services/partnerReport';
 import { logger } from './utils/logger';
 
 // =============================================================================
@@ -115,33 +115,61 @@ app.post('/api/generate-report', async (req: Request, res: Response) => {
   clearLogs();
   addLog('Generating report...');
 
-  const sprintNameOrId = params.sprintName || params.sprintId || params.boardId || 'default';
-
   if (params.mockMode) {
     process.env.MOCK_MODE = 'true';
   }
 
   try {
-    addLog(`Sprint: ${sprintNameOrId}`);
-    
-    const cliResult = await runSprintReportWorkflow({
-      sprintNameOrId,
-      dryRun: true,
+    if (!params.boardId) {
+      res.status(400).json({ error: 'boardId is required' });
+      return;
+    }
+
+    addLog(`Board ID: ${params.boardId}`);
+
+    // Step 1: Collect data from Jira
+    const basicBoardData = await collectBasicBoardSprintData({
+      boardId: params.boardId,
+      mockMode: params.mockMode ?? false,
+    });
+
+    if (!basicBoardData.currentSprint) {
+      res.status(400).json({ 
+        error: 'No current sprint found',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    addLog(`Sprint: ${basicBoardData.currentSprint.sprint.name}`);
+
+    // Step 2: Run strategic analysis
+    const analysis = await performStrategicAnalysis(
+      basicBoardData.activeVersion,
+      basicBoardData.currentSprint,
+      basicBoardData.previousSprint,
+      params.mockMode ?? false,
+    );
+
+    addLog('Analysis complete');
+
+    // Step 3: Generate report markdown
+    const reportMarkdown = await generatePartnerReportMarkdown({
+      basicBoardData,
+      analysis: analysis ?? undefined,
     });
 
     addLog('Report generation complete');
 
     const response: GenerateReportResponse = {
-      sprint: cliResult.sprint ? {
-        id: String(cliResult.sprint.id),
-        name: cliResult.sprint.name,
-        goal: cliResult.sprint.goal,
-        startDate: cliResult.sprint.startDate,
-        endDate: cliResult.sprint.endDate,
-      } : undefined,
-      report: cliResult.report,
-      reportValidation: cliResult.reportValidation,
-      notionPage: cliResult.notionPage,
+      sprint: {
+        id: String(basicBoardData.currentSprint.sprint.id),
+        name: basicBoardData.currentSprint.sprint.name,
+        goal: basicBoardData.currentSprint.sprint.goal,
+        startDate: basicBoardData.currentSprint.sprint.startDate,
+        endDate: basicBoardData.currentSprint.sprint.endDate,
+      },
+      reportMarkdown,
       logs: [...logs],
     };
 

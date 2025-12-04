@@ -5,6 +5,7 @@
  */
 
 import OpenAI from 'openai';
+import type { BasicBoardSprintData, StrategicAnalysis, SprintIssue } from '@ezreport/shared';
 import { IS_MOCK, isOpenAIConfigured, OPENAI_CONFIG } from '../config';
 import { logger } from '../utils/logger';
 
@@ -12,55 +13,9 @@ import { logger } from '../utils/logger';
 // Types
 // =============================================================================
 
-interface CollectedData {
-  basicBoardData?: {
-    currentSprint?: {
-      sprint: {
-        id: number;
-        name: string;
-        goal?: string;
-        startDate?: string;
-        endDate?: string;
-      };
-      issues: Array<{
-        key: string;
-        summary: string;
-        status: string;
-        statusCategory: string;
-        storyPoints: number | null;
-        assignee: string | null;
-        artifact: string | null;
-      }>;
-    };
-    previousSprint?: {
-      sprint: {
-        name: string;
-      };
-    };
-    activeVersion?: {
-      name: string;
-      description?: string;
-      releaseDate?: string;
-    };
-  };
-  analysis?: {
-    versionSprintAlignment?: {
-      overallAlignment: string;
-      recommendation: string;
-    };
-    sprintTasksAlignment?: {
-      goalAlignment: string;
-      unmatchedTasks: Array<{ key: string; summary: string; reason: string }>;
-    };
-    demoRecommendation?: {
-      recommendedDemos: Array<{
-        issueKey: string;
-        summary: string;
-        demoValue: string;
-        suggestedFormat: string;
-      }>;
-    };
-  };
+interface PartnerReportInput {
+  basicBoardData?: BasicBoardSprintData;
+  analysis?: StrategicAnalysis;
 }
 
 // =============================================================================
@@ -87,8 +42,6 @@ function extractSprintNumber(sprintName: string): string {
   const match = sprintName.match(/(\d+)/);
   return match?.[1] ?? '1';
 }
-
-type SprintIssue = NonNullable<NonNullable<CollectedData['basicBoardData']>['currentSprint']>['issues'][number];
 
 function calculateProgressPercent(issues: SprintIssue[]): number {
   const totalPoints = issues.reduce((sum: number, i: SprintIssue) => sum + (i.storyPoints ?? 0), 0);
@@ -130,7 +83,7 @@ const SYSTEM_PROMPT = `Ты — AI, который генерирует парт
 
 Верни только markdown-документ без дополнительных комментариев.`;
 
-function buildMockReport(data: CollectedData): string {
+function buildMockReport(data: PartnerReportInput): string {
   const sprint = data.basicBoardData?.currentSprint;
   if (!sprint) {
     return '# Отчёт\n\nНет данных о спринте.';
@@ -203,7 +156,7 @@ ${sprint.issues.filter(i => i.artifact).length > 0
   return report;
 }
 
-async function generateWithAI(data: CollectedData): Promise<string> {
+async function generateWithAI(data: PartnerReportInput): Promise<string> {
   const openai = new OpenAI({ apiKey: OPENAI_CONFIG.apiKey });
 
   const sprint = data.basicBoardData?.currentSprint;
@@ -242,7 +195,7 @@ ${analysis ? `АНАЛИЗ:\n${JSON.stringify(analysis, null, 2)}` : ''}
 /**
  * Generate partner report in markdown format
  */
-export async function generatePartnerReportMarkdown(data: CollectedData): Promise<string> {
+export async function generatePartnerReportMarkdown(data: PartnerReportInput): Promise<string> {
   // Use mock report if in mock mode or OpenAI not configured
   if (IS_MOCK || !isOpenAIConfigured()) {
     logger.info('[MOCK] Generating mock partner report');

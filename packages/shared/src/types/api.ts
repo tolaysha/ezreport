@@ -6,8 +6,7 @@ import type { BasicBoardSprintData, SprintCardData } from './board';
 import type { SprintInfo } from './sprint';
 import type { VersionMeta } from './version';
 import type { StrategicAnalysis } from './analysis';
-import type { SprintReportStructured, NotionPageResult } from './report';
-import type { SprintDataValidationResult, SprintReportValidationResult } from './validation';
+import type { SprintDataValidationResult } from './validation';
 
 // =============================================================================
 // Request Types
@@ -40,9 +39,7 @@ export interface CollectDataResponse {
 
 export interface GenerateReportResponse {
   sprint?: Partial<SprintInfo>;
-  report?: SprintReportStructured | null;
-  reportValidation?: SprintReportValidationResult | null;
-  notionPage?: NotionPageResult | null;
+  reportMarkdown?: string;
   logs?: string[];
 }
 

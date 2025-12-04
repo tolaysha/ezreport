@@ -6,7 +6,6 @@ interface CliArgs {
   dryRun?: boolean;
   help?: boolean;
   test?: boolean;
-  legacy?: boolean;
 }
 
 function parseArgs(args: string[]): CliArgs {
@@ -19,8 +18,6 @@ function parseArgs(args: string[]): CliArgs {
       result.dryRun = true;
     } else if (arg === '--test' || arg === '--e2e-test') {
       result.test = true;
-    } else if (arg === '--legacy') {
-      result.legacy = true;
     } else if (arg.startsWith('--sprint=')) {
       result.sprint = arg.replace('--sprint=', '');
     } else if (arg.startsWith('--sprint-id=')) {
@@ -46,14 +43,7 @@ Options:
   --sprint-id=<id>    Sprint ID to generate report for
   --dry-run           Generate report but don't create Notion page
   --test              Run in E2E test mode (resilient, always succeeds)
-  --legacy            Use legacy pipeline (single AI prompt, no validation)
   --help, -h          Show this help message
-
-Workflow Stages:
-  The default pipeline uses a three-stage workflow:
-  1. Data collection & validation (with AI goal-issue match check)
-  2. Block-by-block report generation (each block uses its own AI prompt)
-  3. Final report validation (structure + AI partner-readiness check)
 
 Test Mode (--test):
   Runs the entire pipeline with resilient fallbacks:
@@ -126,88 +116,28 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Legacy mode: use the old single-prompt pipeline
-  if (args.legacy) {
-    const { generateSprintReport } = await import('./services/sprintReport');
-    const { logger } = await import('./utils/logger');
-
-    logger.info('Starting sprint report generation (LEGACY MODE)', {
-      sprint: sprintNameOrId,
-      dryRun: args.dryRun ?? false,
-    });
-
-    console.log('\n⚙️  Running in LEGACY mode (single AI prompt)...\n');
-
-    const result = await generateSprintReport({
-      sprintNameOrId,
-      dryRun: args.dryRun,
-    });
-
-    if (!result.success) {
-      console.error(`\n❌ Error: ${result.error}\n`);
-      process.exit(1);
-    }
-
-    process.exit(0);
-  }
-
-  // Default: New three-stage workflow
-  const { runSprintReportWorkflow } = await import('./services/sprintReportWorkflow');
+  const { generateSprintReport } = await import('./services/sprintReport');
   const { logger } = await import('./utils/logger');
 
-  logger.info('Starting sprint report workflow', {
+  logger.info('Starting sprint report generation', {
     sprint: sprintNameOrId,
     dryRun: args.dryRun ?? false,
   });
 
-  console.log('\n🚀 Starting Sprint Report Workflow\n');
-  console.log('='.repeat(60));
+  console.log('\n🚀 Generating Sprint Report...\n');
 
-  const result = await runSprintReportWorkflow({
+  const result = await generateSprintReport({
     sprintNameOrId,
     dryRun: args.dryRun,
   });
 
-  console.log('='.repeat(60));
-
-  // Print validation summary
-  if (result.dataValidation) {
-    const { errors, warnings } = result.dataValidation;
-    if (errors.length > 0 || warnings.length > 0) {
-      console.log('\n📋 Data Validation Summary:');
-      if (errors.length > 0) {
-        console.log(`   Errors: ${errors.length}`);
-        errors.forEach(e => console.log(`     ❌ ${e.message}`));
-      }
-      if (warnings.length > 0) {
-        console.log(`   Warnings: ${warnings.length}`);
-        warnings.forEach(w => console.log(`     ⚠️  ${w.message}`));
-      }
-    }
-  }
-
-  if (result.reportValidation) {
-    const { errors, warnings } = result.reportValidation;
-    if (errors.length > 0 || warnings.length > 0) {
-      console.log('\n📋 Report Validation Summary:');
-      if (errors.length > 0) {
-        console.log(`   Errors: ${errors.length}`);
-        errors.forEach(e => console.log(`     ❌ ${e.message}`));
-      }
-      if (warnings.length > 0) {
-        console.log(`   Warnings: ${warnings.length}`);
-        warnings.forEach(w => console.log(`     ⚠️  ${w.message}`));
-      }
-    }
-  }
-
   if (!result.success) {
-    console.error(`\n❌ Workflow failed: ${result.abortReason ?? result.error}\n`);
+    console.error(`\n❌ Error: ${result.error}\n`);
     process.exit(1);
   }
 
-  if (result.notionPage) {
-    console.log(`\n✅ Success! Notion page: ${result.notionPage.url}\n`);
+  if (result.page) {
+    console.log(`\n✅ Success! Notion page: ${result.page.url}\n`);
   } else if (args.dryRun) {
     console.log('\n✅ Dry run completed successfully.\n');
   }

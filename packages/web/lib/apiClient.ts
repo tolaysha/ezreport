@@ -131,10 +131,10 @@ export async function analyzeData(
  */
 export async function generatePartnerReport(
   collectedData: unknown
-): Promise<{ report: string; notionUrl?: string }> {
-  // Extract sprint name from collected data for the request
-  const data = collectedData as { basicBoardData?: { currentSprint?: { sprint: { name: string } } } };
-  const sprintName = data?.basicBoardData?.currentSprint?.sprint?.name;
+): Promise<{ report: string }> {
+  // Extract board ID from collected data for the request
+  const data = collectedData as { basicBoardData?: { boardId?: string; currentSprint?: { sprint: { name: string } } } };
+  const boardId = data?.basicBoardData?.boardId;
 
   const response = await fetch(`${API_BASE_URL}/api/generate-report`, {
     method: 'POST',
@@ -142,7 +142,7 @@ export async function generatePartnerReport(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sprintName,
+      boardId,
     }),
   });
 
@@ -155,7 +155,6 @@ export async function generatePartnerReport(
 
   const result: GenerateReportResponse = await response.json();
   return {
-    report: result.report || '',
-    notionUrl: result.notionPage?.url,
+    report: result.reportMarkdown || '',
   };
 }

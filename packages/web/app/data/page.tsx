@@ -404,7 +404,7 @@ export default function DataPage() {
 
         {/* Make EzReport Button - appears after strategic analysis */}
         {analysisResult && collectResponse?.basicBoardData && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 text-center py-8">
             <button
               onClick={() => {
                 // Save collected data to localStorage for the report page
@@ -414,13 +414,11 @@ export default function DataPage() {
                 }));
                 router.push('/report');
               }}
-              className="group relative border-2 border-green-500 bg-green-500/10 text-green-400 px-8 py-4 font-mono text-lg font-bold hover:bg-green-500 hover:text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+              className="text-4xl md:text-6xl font-bold tracking-tight cursor-pointer transition-all duration-300 hover:scale-105 group"
             >
-              <span className="flex items-center gap-3">
-                <span className="text-2xl">📄</span>
-                <span>MAKE EZREPORT</span>
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
-              </span>
+              <span className="text-zinc-600 group-hover:text-zinc-500 transition-colors">make </span>
+              <span className="text-green-800 group-hover:text-green-600 transition-colors">ez</span>
+              <span className="text-zinc-700 group-hover:text-zinc-500 transition-colors">report</span>
             </button>
           </div>
         )}
