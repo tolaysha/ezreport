@@ -4,7 +4,11 @@
  * Collects basic sprint data for a given board, including:
  * - Previous (last closed) sprint
  * - Current (active) sprint
- * - Version info and strategic analysis
+ * - Version info
+ *
+ * NOTE: This is a pure data collection step with NO AI calls.
+ * Strategic analysis and goal alignment should be triggered
+ * separately via the /api/board/:id/analyse endpoint.
  */
 
 import type {
@@ -26,10 +30,6 @@ import {
   generateMockActiveVersion,
 } from '../mocks/sprintMocks';
 
-// AI
-import { generateSprintGoal } from '../ai/goalGenerator';
-import { performStrategicAnalysis } from '../ai/strategicAnalyzer';
-
 // Jira
 import {
   createJiraClient,
@@ -40,8 +40,6 @@ import {
   toSprintIssue,
 } from '../jira/boardFetcher';
 
-// Goal alignment
-import { assessGoalAlignment } from './goalAlignment';
 
 // Re-export for backward compatibility
 export { performStrategicAnalysis } from '../ai/strategicAnalyzer';
@@ -53,7 +51,6 @@ export { performStrategicAnalysis } from '../ai/strategicAnalyzer';
 export interface CollectBasicBoardParams {
   boardId: string;
   mockMode?: boolean;
-  skipAnalysis?: boolean;
 }
 
 // =============================================================================
@@ -87,30 +84,21 @@ export function pickRecommendedArtifactIssues(issues: SprintIssue[]): SprintIssu
 // Sprint Card Builder
 // =============================================================================
 
-async function buildSprintCardData(
+function buildSprintCardData(
   sprintMeta: SprintMeta,
   issues: SprintIssue[],
-  mockMode: boolean,
-): Promise<SprintCardData> {
-  let updatedSprintMeta = { ...sprintMeta };
-  
-  // Generate goal if not present
-  if (!sprintMeta.goal && !mockMode && issues.length > 0) {
-    logger.info(`[buildSprintCardData] No goal for ${sprintMeta.name}, generating with AI...`);
-    const generatedGoal = await generateSprintGoal(issues, sprintMeta.name);
-    if (generatedGoal) {
-      updatedSprintMeta = { ...sprintMeta, goal: generatedGoal, goalIsGenerated: true };
-    }
-  }
-
-  const alignment = await assessGoalAlignment(updatedSprintMeta, issues, mockMode);
+): SprintCardData {
   const recommendedArtifactIssues = pickRecommendedArtifactIssues(issues);
 
+  // No AI calls in data collection step
+  // Goal alignment will be assessed later in the analysis step if needed
+  const hasGoal = !!sprintMeta.goal && sprintMeta.goal.trim() !== '';
+
   return {
-    sprint: updatedSprintMeta,
+    sprint: sprintMeta,
     issues,
-    goalMatchLevel: alignment.level,
-    goalMatchComment: alignment.comment,
+    goalMatchLevel: hasGoal ? 'unknown' : 'unknown',
+    goalMatchComment: hasGoal ? 'Оценка будет выполнена на этапе анализа.' : 'Цель спринта не указана.',
     recommendedArtifactIssues,
   };
 }
@@ -118,7 +106,6 @@ async function buildSprintCardData(
 async function buildSprintCardDataSafe(
   sprint: { id: number; name: string; state: string; startDate?: string; endDate?: string; goal?: string },
   fetchIssues: () => Promise<{ key: string; fields: Record<string, unknown> }[]>,
-  mockMode: boolean,
 ): Promise<SprintCardData> {
   const sprintMeta = toSprintMeta(sprint as Parameters<typeof toSprintMeta>[0]);
   let issues: SprintIssue[] = [];
@@ -140,7 +127,7 @@ async function buildSprintCardDataSafe(
     };
   }
 
-  return buildSprintCardData(sprintMeta, issues, mockMode);
+  return buildSprintCardData(sprintMeta, issues);
 }
 
 // =============================================================================
@@ -154,7 +141,7 @@ async function buildSprintCardDataSafe(
 export async function collectBasicBoardSprintData(
   params: CollectBasicBoardParams,
 ): Promise<BasicBoardSprintData> {
-  const { boardId, mockMode: explicitMockMode, skipAnalysis } = params;
+  const { boardId, mockMode: explicitMockMode } = params;
   const useMockMode = explicitMockMode ?? IS_MOCK;
 
   logger.info(`[collectBasicBoardSprintData] Starting for board ${boardId}, mockMode=${useMockMode}`);
@@ -171,25 +158,17 @@ export async function collectBasicBoardSprintData(
     logger.info('[collectBasicBoardSprintData] Using mock data');
 
     result.activeVersion = generateMockActiveVersion();
-    result.previousSprint = await buildSprintCardData(
+    result.previousSprint = buildSprintCardData(
       generateMockPreviousSprint(),
       generateMockPreviousSprintIssues(),
-      true,
     );
-    result.currentSprint = await buildSprintCardData(
+    result.currentSprint = buildSprintCardData(
       generateMockCurrentSprint(),
       generateMockCurrentSprintIssues(),
-      true,
     );
     
-    if (!skipAnalysis) {
-      result.analysis = await performStrategicAnalysis(
-        result.activeVersion,
-        result.currentSprint,
-        result.previousSprint,
-        true,
-      );
-    }
+    // No AI calls in data collection step
+    // Strategic analysis should be triggered separately via /api/board/:id/analyse
     
     result.availability = { hasPreviousSprint: true, hasCurrentSprint: true };
     logger.info('[collectBasicBoardSprintData] Mock data ready');
@@ -247,7 +226,6 @@ export async function collectBasicBoardSprintData(
     result.previousSprint = await buildSprintCardDataSafe(
       previousSprint,
       () => fetchIssuesForSprint(client, previousSprint.id),
-      useMockMode,
     );
     result.availability.hasPreviousSprint = true;
   }
@@ -258,26 +236,16 @@ export async function collectBasicBoardSprintData(
     result.currentSprint = await buildSprintCardDataSafe(
       activeSprint,
       () => fetchIssuesForSprint(client, activeSprint.id),
-      useMockMode,
     );
     result.availability.hasCurrentSprint = true;
   }
 
-  // Strategic analysis
-  if (result.currentSprint && !skipAnalysis) {
-    logger.info('[collectBasicBoardSprintData] Performing strategic analysis...');
-    result.analysis = await performStrategicAnalysis(
-      result.activeVersion,
-      result.currentSprint,
-      result.previousSprint,
-      useMockMode,
-    );
-  }
+  // No AI calls in data collection step
+  // Strategic analysis should be triggered separately via /api/board/:id/analyse
 
   logger.info('[collectBasicBoardSprintData] Data collection complete', {
     hasPreviousSprint: result.availability.hasPreviousSprint,
     hasCurrentSprint: result.availability.hasCurrentSprint,
-    hasAnalysis: !!result.analysis,
   });
 
   return result;

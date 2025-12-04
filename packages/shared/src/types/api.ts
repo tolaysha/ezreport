@@ -18,7 +18,6 @@ export interface SprintReportParams {
   sprintId?: string;
   sprintName?: string;
   mockMode?: boolean;
-  skipAnalysis?: boolean;
 }
 
 export interface AnalyzeDataParams {

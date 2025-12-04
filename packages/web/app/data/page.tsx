@@ -46,7 +46,7 @@ function LoadingIndicator() {
         </div>
         <div className="flex items-center gap-2 animate-psychedelic" style={{ animationDelay: '0.4s' }}>
           <span>▓▓▒▒░░</span>
-          <span>Running AI analysis...</span>
+          <span>Building sprint cards...</span>
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
 // Main Page Component
 // =============================================================================
 
-export default function Stage1Page() {
+export default function DataPage() {
   const [collectResponse, setCollectResponse] = useState<CollectDataResponse | null>(null);
   const [reportResponse, setReportResponse] = useState<GenerateReportResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<StrategicAnalysis | null>(null);
@@ -128,7 +128,8 @@ export default function Stage1Page() {
     setAnalysisResult(null);
 
     try {
-      const result = await collectData({ ...params, skipAnalysis: true });
+      // Data collection step - no AI calls
+      const result = await collectData(params);
       setCollectResponse(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -190,10 +191,10 @@ export default function Stage1Page() {
               [HOME]
             </Link>
             <span className="text-green-500/50">/</span>
-            <span className="text-green-500 font-mono text-sm">Stage 1</span>
+            <span className="text-green-500 font-mono text-sm">Data</span>
           </div>
           <ConsoleHeading level={1} className="mb-2">
-            [STAGE 1] Сбор данных и валидация
+            [DATA] Сбор данных и валидация
           </ConsoleHeading>
           <p className="text-green-500 font-mono text-sm opacity-80">
             Сбор данных о спринтах из Jira и оценка соответствия задач целям
@@ -330,34 +331,26 @@ export default function Stage1Page() {
           </div>
         </ConsolePanel>
 
-        {/* Generate Report Button */}
-        {hasData && (
-          <div className="mt-8">
-            <button
-              onClick={handleGenerateReport}
-              disabled={isRunning}
-              className="w-full border-2 border-cyan-500 text-cyan-500 px-6 py-4 font-mono text-lg hover:bg-cyan-500 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]"
-            >
-              {isRunning ? '[ ГЕНЕРАЦИЯ... ]' : '[ СГЕНЕРИРОВАТЬ ОТЧЁТ ]'}
-            </button>
-            <div className="text-cyan-500/60 font-mono text-xs text-center mt-2">
-              Данные из Jira + промпт + шаблон → итоговый отчёт
+        {/* Navigation to next step */}
+        <div className="mt-8 text-center">
+          <Link
+            href="/analyse"
+            className={`inline-block border text-lg px-8 py-4 font-mono transition-colors ${
+              hasData
+                ? 'border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]'
+                : 'border-green-500/50 text-green-500/50 cursor-default'
+            }`}
+          >
+            [NEXT] Перейти к анализу →
+          </Link>
+          {!hasData && (
+            <div className="text-green-500/40 font-mono text-xs mt-2">
+              Сначала загрузите данные
             </div>
-          </div>
-        )}
-
-        {/* Navigation to Stage 2 */}
-        {reportResponse?.report && (
-          <div className="mt-8 text-center">
-            <Link
-              href="/stage-2"
-              className="inline-block border border-green-500 text-green-500 px-6 py-3 font-mono hover:bg-green-500 hover:text-black transition-colors"
-            >
-              [NEXT] Перейти к Stage 2 — Просмотр отчёта →
-            </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
+

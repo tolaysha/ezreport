@@ -18,7 +18,7 @@ This is a web client that interfaces with an external HTTP API for managing spri
 
 The console is organized into three dedicated pages for different stages of the sprint report workflow:
 
-### Stage 1 — Data Collection & Validation (`/stage-1`)
+### Data Collection & Validation (`/data`)
 
 - Collects sprint data from Jira
 - Validates data quality and completeness
@@ -26,7 +26,7 @@ The console is organized into three dedicated pages for different stages of the 
 - Displays validation results: DATA_VALID, GOAL_MATCH level
 - Lists errors and warnings
 
-### Stage 2 — Block-by-Block Generation (`/stage-2`)
+### Analysis & Generation (`/analyse`)
 
 - Generates report in blocks (overview, achievements, blockers, etc.)
 - For each block shows:
@@ -36,21 +36,20 @@ The console is organized into three dedicated pages for different stages of the 
 - "Go" button for triggering generation
 - Visual progress through report blocks
 
-### Stage 3 — Final Validation (`/stage-3`)
+### Final Report (`/report`)
 
-- Validates the complete report against rules
-- Shows REPORT_VALID status
-- Displays partner readiness check
-- Lists validation errors and warnings
+- Displays the complete generated report
+- Partner-ready Markdown format
+- Copy to clipboard functionality
 - Links to Notion page if created
 
 ### Home Page (`/`)
 
 The home page is a simple navigation console that links to all three stages:
 
-- Press `1` to go to Stage 1
-- Press `2` to go to Stage 2
-- Press `3` to go to Stage 3
+- Press `1` to go to Data
+- Press `2` to go to Analyse
+- Press `3` to go to Report
 
 ## Configuration
 
@@ -117,12 +116,12 @@ npm run dev
 │   ├── page.tsx              # Home navigation page
 │   ├── layout.tsx            # Root layout with console theme
 │   ├── globals.css           # Global styles
-│   ├── stage-1/
-│   │   └── page.tsx          # Stage 1: Data & Validation
-│   ├── stage-2/
-│   │   └── page.tsx          # Stage 2: Block-by-block generation
-│   └── stage-3/
-│       └── page.tsx          # Stage 3: Final validation
+│   ├── data/
+│   │   └── page.tsx          # Data Collection & Validation
+│   ├── analyse/
+│   │   └── page.tsx          # Analysis & Report Generation
+│   └── report/
+│       └── page.tsx          # Final Report View
 ├── components/
 │   ├── Accordion.tsx         # Collapsible section component
 │   ├── ControlPanel.tsx      # Legacy control panel (for reference)
@@ -155,7 +154,7 @@ The project includes reusable console-style components:
 - `ConsoleCheckbox` - Checkbox with label
 - `BackendStatus` - Real-time backend health indicator
 
-## Report Blocks (Stage 2)
+## Report Blocks (Analyse)
 
 The report is divided into the following blocks:
 

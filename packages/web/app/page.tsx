@@ -18,9 +18,9 @@ export default function Home() {
         return;
       }
 
-      if (e.key === '1') router.push('/stage-1');
-      if (e.key === '2') router.push('/stage-2');
-      if (e.key === '3') router.push('/stage-3');
+      if (e.key === '1') router.push('/data');
+      if (e.key === '2') router.push('/analyse');
+      if (e.key === '3') router.push('/report');
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -53,24 +53,24 @@ export default function Home() {
 
           <div className="space-y-4">
             <NavItem
-              href="/stage-1"
+              href="/data"
               number={1}
-              title="Сбор данных и валидация"
+              title="Сбор данных"
               description="Сбор данных из Jira, оценка качества и полноты информации"
             />
 
             <NavItem
-              href="/stage-2"
+              href="/analyse"
               number={2}
-              title="Генерация отчёта по блокам"
+              title="Анализ и генерация"
               description="Пошаговая генерация каждого блока с просмотром промптов и входных данных"
             />
 
             <NavItem
-              href="/stage-3"
+              href="/report"
               number={3}
-              title="Финальная валидация"
-              description="Проверка полного отчёта по правилам и готовность для партнёра"
+              title="Финальный отчёт"
+              description="Готовый отчёт для партнёров в формате Markdown"
             />
           </div>
         </ConsolePanel>
@@ -104,7 +104,7 @@ function NavItem({ href, number, title, description }: NavItemProps) {
         </div>
         <div className="flex-1">
           <div className="font-mono text-lg text-green-500 group-hover:text-black mb-1">
-            Stage {number} — {title}
+            {title}
           </div>
           <div className="font-mono text-sm text-green-500/70 group-hover:text-black/70">
             {description}

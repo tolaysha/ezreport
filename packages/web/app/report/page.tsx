@@ -305,10 +305,17 @@ export default function ReportPage() {
             </Link>
             <span className="text-green-500/50">/</span>
             <Link
-              href="/stage-1"
+              href="/data"
               className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
             >
               Data
+            </Link>
+            <span className="text-green-500/50">/</span>
+            <Link
+              href="/analyse"
+              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
+            >
+              Analyse
             </Link>
             <span className="text-green-500/50">/</span>
             <span className="text-green-500 font-mono text-sm">Report</span>
@@ -325,7 +332,7 @@ export default function ReportPage() {
           <div className="mb-6 border border-red-500 bg-black p-4">
             <div className="text-red-500 font-mono text-sm">[ERROR] {error}</div>
             <Link
-              href="/stage-1"
+              href="/data"
               className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors mt-2 inline-block"
             >
               → Вернуться к сбору данных
@@ -457,17 +464,16 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* Back Link */}
+        {/* Back to Home */}
         <div className="mt-8 text-center">
           <Link
-            href="/stage-1"
-            className="inline-block border border-green-500/50 text-green-500/70 px-6 py-2 font-mono text-sm hover:border-green-500 hover:text-green-500 transition-colors"
+            href="/"
+            className="inline-block border border-green-500 text-green-500 px-6 py-3 font-mono hover:bg-green-500 hover:text-black transition-colors"
           >
-            ← Вернуться к сбору данных
+            ← Вернуться на главную
           </Link>
         </div>
       </div>
     </div>
   );
 }
-

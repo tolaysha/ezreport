@@ -64,7 +64,6 @@ app.post('/api/collect-data', async (req: Request, res: Response) => {
   addLog('Collecting sprint data...');
   addLog(`Board ID: ${params.boardId || 'not specified'}`);
   addLog(`Mock mode: ${params.mockMode ? 'ON' : 'OFF'}`);
-  addLog(`Skip AI analysis: ${params.skipAnalysis ? 'YES' : 'NO'}`);
 
   try {
     if (!params.boardId) {
@@ -72,10 +71,11 @@ app.post('/api/collect-data', async (req: Request, res: Response) => {
       return;
     }
 
+    // Data collection step - no AI calls
+    // Strategic analysis should be triggered separately via /api/analyze-data
     const basicBoardData = await collectBasicBoardSprintData({
       boardId: params.boardId,
       mockMode: params.mockMode ?? false,
-      skipAnalysis: params.skipAnalysis ?? false,
     });
 
     addLog(`Previous sprint: ${basicBoardData.availability.hasPreviousSprint ? 'found' : 'not found'}`);

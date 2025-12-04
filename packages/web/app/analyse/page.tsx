@@ -56,7 +56,7 @@ const REPORT_STRUCTURE: StructureItem[] = [
 // Main Page Component
 // =============================================================================
 
-export default function Stage2Page() {
+export default function AnalysePage() {
   const [response, setResponse] = useState<GenerateReportResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,16 +97,16 @@ export default function Stage2Page() {
             </Link>
             <span className="text-green-500/50">/</span>
             <Link
-              href="/stage-1"
+              href="/data"
               className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
             >
-              Stage 1
+              Data
             </Link>
             <span className="text-green-500/50">/</span>
-            <span className="text-green-500 font-mono text-sm">Stage 2</span>
+            <span className="text-green-500 font-mono text-sm">Analyse</span>
           </div>
           <ConsoleHeading level={1} className="mb-2">
-            [STAGE 2] Генерация отчёта
+            [ANALYSE] Генерация отчёта
           </ConsoleHeading>
           <p className="text-green-500 font-mono text-sm opacity-80">
             Генерация полного отчёта по данным спринта
@@ -187,7 +187,7 @@ export default function Stage2Page() {
                     <li>Нет данных спринта для генерации</li>
                     <li>OpenAI не настроен</li>
                   </ul>
-                  <p className="mt-2">Сначала выполните Stage 1 для сбора данных.</p>
+                  <p className="mt-2">Сначала выполните Data для сбора данных.</p>
                 </div>
               </div>
             ) : (
@@ -198,7 +198,7 @@ export default function Stage2Page() {
                     🚀 VERSION CALLOUT
                   </div>
                   <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
-                    {report.version || '—'}
+                    {report.version ? `Version ${report.version.number} — ${report.version.goal}` : '—'}
                   </pre>
                 </div>
 
@@ -208,7 +208,7 @@ export default function Stage2Page() {
                     ✅ SPRINT CALLOUT
                   </div>
                   <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
-                    {report.sprint || '—'}
+                    {report.sprint ? `Sprint ${report.sprint.number}: ${report.sprint.goal} (${report.sprint.progressPercent}%)` : '—'}
                   </pre>
                 </div>
 
@@ -228,7 +228,9 @@ export default function Stage2Page() {
                     3.3 ACHIEVEMENTS
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.achievements || '—'}
+                    {report.achievements?.length > 0 
+                      ? report.achievements.map(a => `• ${a.title}: ${a.description}`).join('\n')
+                      : '—'}
                   </pre>
                 </div>
 
@@ -238,7 +240,9 @@ export default function Stage2Page() {
                     3.4 NOT DONE
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.notDone || 'Всё запланированное реализовано.'}
+                    {report.notDone?.length > 0 
+                      ? report.notDone.map(n => `• ${n.title}: ${n.reason}`).join('\n')
+                      : 'Всё запланированное реализовано.'}
                   </pre>
                 </div>
 
@@ -248,7 +252,9 @@ export default function Stage2Page() {
                     4. ARTIFACTS
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.artifacts || 'Нет артефактов.'}
+                    {report.artifacts?.length > 0 
+                      ? report.artifacts.map(a => `• ${a.title}: ${a.description}`).join('\n')
+                      : 'Нет артефактов.'}
                   </pre>
                 </div>
 
@@ -258,7 +264,7 @@ export default function Stage2Page() {
                     5. NEXT SPRINT
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.nextSprint || '—'}
+                    {report.nextSprint ? `Sprint ${report.nextSprint.sprintNumber}: ${report.nextSprint.goal}` : '—'}
                   </pre>
                 </div>
 
@@ -268,7 +274,9 @@ export default function Stage2Page() {
                     5.3 BLOCKERS
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.blockers || 'Нет'}
+                    {report.blockers?.length > 0 
+                      ? report.blockers.map(b => `• ${b.title}: ${b.description}`).join('\n')
+                      : 'Нет'}
                   </pre>
                 </div>
 
@@ -278,7 +286,9 @@ export default function Stage2Page() {
                     6. PM QUESTIONS
                   </div>
                   <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
-                    {report.pmQuestions || 'Нет'}
+                    {report.pmQuestions?.length > 0 
+                      ? report.pmQuestions.map(q => `• ${q.title}: ${q.description}`).join('\n')
+                      : 'Нет'}
                   </pre>
                 </div>
               </div>
@@ -286,18 +296,26 @@ export default function Stage2Page() {
           </ConsolePanel>
         </div>
 
-        {/* Navigation to Stage 3 */}
-        {report && (
-          <div className="mt-8 text-center">
-            <Link
-              href="/stage-3"
-              className="inline-block border border-green-500 text-green-500 px-6 py-3 font-mono hover:bg-green-500 hover:text-black transition-colors"
-            >
-              [NEXT] Перейти к Stage 3 — Финальная валидация →
-            </Link>
-          </div>
-        )}
+        {/* Navigation to Report */}
+        <div className="mt-8 text-center">
+          <Link
+            href="/report"
+            className={`inline-block border text-lg px-8 py-4 font-mono transition-colors ${
+              report
+                ? 'border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]'
+                : 'border-green-500/50 text-green-500/50 cursor-default'
+            }`}
+          >
+            [NEXT] Перейти к финальному отчёту →
+          </Link>
+          {!report && (
+            <div className="text-green-500/40 font-mono text-xs mt-2">
+              Сначала сгенерируйте отчёт
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
