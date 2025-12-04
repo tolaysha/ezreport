@@ -257,7 +257,11 @@ export default function ReportPage() {
 
     try {
       const response = await generatePartnerReport(collectedData);
-      setReport(response.report);
+      if (response.report && response.report.trim()) {
+        setReport(response.report);
+      } else {
+        setError('Сервер вернул пустой отчёт. Попробуйте ещё раз.');
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';

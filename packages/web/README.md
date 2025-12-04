@@ -1,10 +1,10 @@
 # EzReport Web Console
 
-A terminal-style web client for the EzReport sprint-report workflow backend. The interface is organized into a **3-stage workflow** for step-by-step report generation and validation.
+A terminal-style web client for the EzReport sprint report backend. The interface provides a visual way to collect sprint data, run AI analysis, and generate partner-ready reports.
 
 ## Overview
 
-This is a web client that interfaces with an external HTTP API for managing sprint report workflows. The application features a console/terminal aesthetic with a black background, green text, and monospace fonts.
+This is a web client that interfaces with the EzReport HTTP API. The application features a console/terminal aesthetic with a black background, green text, and monospace fonts.
 
 ## Tech Stack
 
@@ -14,39 +14,31 @@ This is a web client that interfaces with an external HTTP API for managing spri
 - JetBrains Mono font
 - No database, no authentication
 
-## 3-Stage Workflow
+## Pages
 
-The console is organized into three dedicated pages for different stages of the sprint report workflow:
+### Data Collection (`/data`)
 
-### Data Collection & Validation (`/data`)
-
-- Collects sprint data from Jira
-- Validates data quality and completeness
-- Shows sprint info, dates, goal
-- Displays validation results: DATA_VALID, GOAL_MATCH level
-- Lists errors and warnings
+- Terminal-style interface with command input
+- Collects sprint data from Jira via `start <board_id>` command
+- Displays version, previous and current sprint cards
+- Runs AI strategic analysis via `analyze` command
+- Shows alignment scores and demo recommendations
 
 ### Analysis & Generation (`/analyse`)
 
-- Generates report in blocks (overview, achievements, blockers, etc.)
-- For each block shows:
-  - Prompt template (what we ask the model)
-  - Input data preview (data used for generation)
-  - Generated result
-- "Go" button for triggering generation
-- Visual progress through report blocks
+- Generates full markdown report
+- Shows report structure preview
+- Displays generated sections (overview, achievements, etc.)
 
 ### Final Report (`/report`)
 
 - Displays the complete generated report
 - Partner-ready Markdown format
 - Copy to clipboard functionality
-- Links to Notion page if created
 
 ### Home Page (`/`)
 
-The home page is a simple navigation console that links to all three stages:
-
+Simple navigation console:
 - Press `1` to go to Data
 - Press `2` to go to Analyse
 - Press `3` to go to Report
@@ -59,16 +51,21 @@ The application requires one environment variable:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
-This should point to your EzReport workflow backend API.
+This should point to your EzReport backend API.
 
 ## API Endpoints
 
-The backend is expected to provide:
+The backend provides:
 
-- `GET /api/workflow/ping` - Health check endpoint
-- `POST /api/workflow/run-step` - Execute workflow steps
-  - `step`: `"collect"` | `"generate"` | `"validate"` | `"full"`
-  - `params`: Sprint parameters (sprintId, sprintName, boardId, mockMode, extra)
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/ping` | Health check |
+| `POST /api/collect-data` | Collect sprint data from Jira |
+| `POST /api/analyze-data` | AI analysis of provided data |
+| `POST /api/analyze` | Collect + AI analysis |
+| `POST /api/generate-report` | Full report generation |
+
+See `docs/api-contracts.md` for detailed API documentation.
 
 ## Available Scripts
 
@@ -117,35 +114,37 @@ npm run dev
 │   ├── layout.tsx            # Root layout with console theme
 │   ├── globals.css           # Global styles
 │   ├── data/
-│   │   └── page.tsx          # Data Collection & Validation
+│   │   └── page.tsx          # Data Collection & Analysis
 │   ├── analyse/
-│   │   └── page.tsx          # Analysis & Report Generation
+│   │   └── page.tsx          # Report Generation
 │   └── report/
 │       └── page.tsx          # Final Report View
 ├── components/
-│   ├── Accordion.tsx         # Collapsible section component
-│   ├── ControlPanel.tsx      # Legacy control panel (for reference)
-│   ├── ResultsPanel.tsx      # Legacy results panel (for reference)
-│   └── console/              # Reusable console UI components
-│       ├── ConsolePanel.tsx
-│       ├── ConsoleHeading.tsx
-│       ├── ConsoleButton.tsx
-│       ├── ConsoleInput.tsx
-│       ├── ConsoleCheckbox.tsx
-│       ├── BackendStatus.tsx
-│       ├── WorkflowParams.tsx
-│       └── index.ts
+│   ├── console/              # Console UI primitives
+│   │   ├── ConsolePanel.tsx
+│   │   ├── ConsoleHeading.tsx
+│   │   ├── ConsoleButton.tsx
+│   │   ├── ConsoleInput.tsx
+│   │   ├── ConsoleCheckbox.tsx
+│   │   ├── BackendStatus.tsx
+│   │   ├── Breadcrumb.tsx
+│   │   └── index.ts
+│   ├── sprint/               # Sprint display components
+│   │   ├── SprintCard.tsx
+│   │   ├── VersionCard.tsx
+│   │   ├── AnalysisPanel.tsx
+│   │   └── index.ts
+│   └── ui/                   # shadcn/ui components
 ├── lib/
 │   ├── apiClient.ts          # API communication layer
-│   ├── blocksConfig.ts       # Report blocks configuration for Stage 2
 │   └── utils.ts              # Utility functions
 └── types/
-    └── workflow.ts           # TypeScript type definitions
+    └── workflow.ts           # TypeScript types (re-exports from @ezreport/shared)
 ```
 
 ## Console UI Components
 
-The project includes reusable console-style components:
+Reusable console-style components:
 
 - `ConsolePanel` - Bordered container with green glow
 - `ConsoleHeading` - Styled headings (h1, h2, h3)
@@ -153,29 +152,20 @@ The project includes reusable console-style components:
 - `ConsoleInput` - Text inputs and textareas
 - `ConsoleCheckbox` - Checkbox with label
 - `BackendStatus` - Real-time backend health indicator
+- `Breadcrumb` - Navigation breadcrumb
 
-## Report Blocks (Analyse)
+## Sprint Components
 
-The report is divided into the following blocks:
-
-1. **version** - Report format version
-2. **sprint** - Sprint name and dates
-3. **overview** - Sprint overview (5-10 sentences)
-4. **notDone** - Tasks not completed
-5. **achievements** - Key achievements
-6. **artifacts** - Links to docs, releases, demos
-7. **nextSprint** - Plans for next sprint
-8. **blockers** - Issues and blockers
-9. **pmQuestions** - Questions for PM
-
-Each block can be viewed with its prompt template and input data preview.
+- `SprintCard` - Displays sprint info with issues
+- `VersionCard` - Shows product version info
+- `AnalysisPanel` - AI analysis results with alignments
 
 ## Deployment
 
-This project can be deployed as a standalone Next.js application or integrated into a monorepo structure.
+This project can be deployed as a standalone Next.js application.
 
 When deploying, update `NEXT_PUBLIC_API_BASE_URL` to point to your backend service.
 
 ## License
 
-Private project for EzReport workflow management.
+Private project for EzReport.

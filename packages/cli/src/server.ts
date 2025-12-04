@@ -1,12 +1,11 @@
 /**
  * HTTP Server for EzReport Web Console
  *
- * Simple REST API:
+ * Simple REST API with server-side state:
  * - GET /api/ping - Health check
- * - POST /api/collect-data - Collect sprint data from Jira
- * - POST /api/generate-report - Generate report using AI
- * - POST /api/analyze - Strategic analysis (collects data + AI)
- * - POST /api/analyze-data - AI analysis of provided data
+ * - POST /api/collect-data - Collect sprint data from Jira (saves to state)
+ * - POST /api/analyze-data - AI analysis (uses state, saves result)
+ * - POST /api/generate-report - Generate report (uses state)
  */
 
 import express, { Request, Response } from 'express';
@@ -20,11 +19,32 @@ import type {
   AnalyzeResponse,
   SprintCardData,
   VersionMeta,
+  BasicBoardSprintData,
+  StrategicAnalysis,
 } from '@ezreport/shared';
 
 import { collectBasicBoardSprintData, performStrategicAnalysis } from './services/collectBasicBoardSprintData';
 import { generatePartnerReportMarkdown } from './services/partnerReport';
 import { logger } from './utils/logger';
+
+// =============================================================================
+// Server State
+// =============================================================================
+
+interface ServerState {
+  basicBoardData: BasicBoardSprintData | null;
+  analysis: StrategicAnalysis | null;
+}
+
+const state: ServerState = {
+  basicBoardData: null,
+  analysis: null,
+};
+
+function clearState(): void {
+  state.basicBoardData = null;
+  state.analysis = null;
+}
 
 // =============================================================================
 // Logs
@@ -56,6 +76,13 @@ app.get('/api/ping', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Clear server state
+app.post('/api/clear', (_req: Request, res: Response) => {
+  clearState();
+  clearLogs();
+  res.json({ status: 'ok', message: 'State cleared' });
+});
+
 // Collect sprint data from Jira
 app.post('/api/collect-data', async (req: Request, res: Response) => {
   const params = req.body as SprintReportParams;
@@ -77,6 +104,10 @@ app.post('/api/collect-data', async (req: Request, res: Response) => {
       boardId: params.boardId,
       mockMode: params.mockMode ?? false,
     });
+
+    // Save to state
+    state.basicBoardData = basicBoardData;
+    state.analysis = null; // Clear analysis when new data is collected
 
     addLog(`Previous sprint: ${basicBoardData.availability.hasPreviousSprint ? 'found' : 'not found'}`);
     addLog(`Current sprint: ${basicBoardData.availability.hasCurrentSprint ? 'found' : 'not found'}`);
@@ -108,66 +139,53 @@ app.post('/api/collect-data', async (req: Request, res: Response) => {
   }
 });
 
-// Generate report using AI
+// Generate report from collected data (uses state)
 app.post('/api/generate-report', async (req: Request, res: Response) => {
-  const params = req.body as SprintReportParams;
+  const { mockMode } = req.body as { mockMode?: boolean };
   
   clearLogs();
   addLog('Generating report...');
 
-  if (params.mockMode) {
+  if (mockMode) {
     process.env.MOCK_MODE = 'true';
   }
 
   try {
-    if (!params.boardId) {
-      res.status(400).json({ error: 'boardId is required' });
-      return;
-    }
-
-    addLog(`Board ID: ${params.boardId}`);
-
-    // Step 1: Collect data from Jira
-    const basicBoardData = await collectBasicBoardSprintData({
-      boardId: params.boardId,
-      mockMode: params.mockMode ?? false,
-    });
-
-    if (!basicBoardData.currentSprint) {
+    // Check if we have data in state
+    if (!state.basicBoardData) {
       res.status(400).json({ 
-        error: 'No current sprint found',
+        error: 'No data available. Please go to Data tab and collect data first.',
         logs: [...logs],
       });
       return;
     }
 
-    addLog(`Sprint: ${basicBoardData.currentSprint.sprint.name}`);
+    if (!state.basicBoardData.currentSprint) {
+      res.status(400).json({ 
+        error: 'No current sprint found in collected data.',
+        logs: [...logs],
+      });
+      return;
+    }
 
-    // Step 2: Run strategic analysis
-    const analysis = await performStrategicAnalysis(
-      basicBoardData.activeVersion,
-      basicBoardData.currentSprint,
-      basicBoardData.previousSprint,
-      params.mockMode ?? false,
-    );
+    addLog(`Sprint: ${state.basicBoardData.currentSprint.sprint.name}`);
+    addLog(`Analysis: ${state.analysis ? 'available' : 'not available'}`);
 
-    addLog('Analysis complete');
-
-    // Step 3: Generate report markdown
+    // Generate report markdown using state data
     const reportMarkdown = await generatePartnerReportMarkdown({
-      basicBoardData,
-      analysis: analysis ?? undefined,
+      basicBoardData: state.basicBoardData,
+      analysis: state.analysis ?? undefined,
     });
 
     addLog('Report generation complete');
 
     const response: GenerateReportResponse = {
       sprint: {
-        id: String(basicBoardData.currentSprint.sprint.id),
-        name: basicBoardData.currentSprint.sprint.name,
-        goal: basicBoardData.currentSprint.sprint.goal,
-        startDate: basicBoardData.currentSprint.sprint.startDate,
-        endDate: basicBoardData.currentSprint.sprint.endDate,
+        id: String(state.basicBoardData.currentSprint.sprint.id),
+        name: state.basicBoardData.currentSprint.sprint.name,
+        goal: state.basicBoardData.currentSprint.sprint.goal,
+        startDate: state.basicBoardData.currentSprint.sprint.startDate,
+        endDate: state.basicBoardData.currentSprint.sprint.endDate,
       },
       reportMarkdown,
       logs: [...logs],
@@ -186,45 +204,41 @@ app.post('/api/generate-report', async (req: Request, res: Response) => {
   }
 });
 
-// Strategic analysis using AI (with data collection)
-app.post('/api/analyze', async (req: Request, res: Response) => {
-  const params = req.body as SprintReportParams;
+// AI analysis of collected data (uses state or provided data)
+app.post('/api/analyze-data', async (req: Request, res: Response) => {
+  const params = req.body as AnalyzeDataParams;
   
   clearLogs();
-  addLog('Running strategic analysis...');
+  addLog('Running AI analysis...');
 
   try {
-    if (!params.boardId) {
-      res.status(400).json({ error: 'boardId is required' });
-      return;
-    }
+    // Use provided data or fall back to state
+    const currentSprint = params.currentSprint ?? state.basicBoardData?.currentSprint;
+    const previousSprint = params.previousSprint ?? state.basicBoardData?.previousSprint;
+    const activeVersion = params.activeVersion ?? state.basicBoardData?.activeVersion;
 
-    addLog(`Board ID: ${params.boardId}`);
-
-    // First collect data
-    const basicBoardData = await collectBasicBoardSprintData({
-      boardId: params.boardId,
-      mockMode: params.mockMode ?? false,
-    });
-
-    if (!basicBoardData.currentSprint) {
-      addLog('No current sprint found, cannot analyze');
+    if (!currentSprint) {
       res.status(400).json({ 
-        error: 'No current sprint found',
+        error: 'No sprint data available. Please go to Data tab and collect data first.',
         logs: [...logs],
       });
       return;
     }
 
+    addLog(`Sprint: ${currentSprint.sprint.name}`);
+    addLog(`Issues count: ${currentSprint.issues.length}`);
     addLog('Running AI analysis...');
 
     // Run strategic analysis
     const analysis = await performStrategicAnalysis(
-      basicBoardData.activeVersion,
-      basicBoardData.currentSprint,
-      basicBoardData.previousSprint,
+      activeVersion as VersionMeta | undefined,
+      currentSprint as SprintCardData,
+      previousSprint as SprintCardData | undefined,
       params.mockMode ?? false,
     );
+
+    // Save analysis to state
+    state.analysis = analysis ?? null;
 
     addLog('Analysis complete');
 
@@ -237,52 +251,7 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`ERROR: ${message}`);
-    logger.error('Strategic analysis failed', { error: message });
-
-    res.status(500).json({
-      error: message,
-      logs: [...logs],
-    });
-  }
-});
-
-// AI analysis of already collected data (no Jira fetch)
-app.post('/api/analyze-data', async (req: Request, res: Response) => {
-  const params = req.body as AnalyzeDataParams;
-  
-  clearLogs();
-  addLog('Running AI analysis on provided data...');
-
-  try {
-    if (!params.currentSprint) {
-      res.status(400).json({ error: 'currentSprint is required' });
-      return;
-    }
-
-    addLog(`Sprint: ${params.currentSprint.sprint.name}`);
-    addLog(`Issues count: ${params.currentSprint.issues.length}`);
-    addLog('Running AI analysis...');
-
-    // Run strategic analysis directly with provided data
-    const analysis = await performStrategicAnalysis(
-      params.activeVersion as VersionMeta | undefined,
-      params.currentSprint as SprintCardData,
-      params.previousSprint as SprintCardData | undefined,
-      params.mockMode ?? false,
-    );
-
-    addLog('Analysis complete');
-
-    const response: AnalyzeResponse = {
-      analysis: analysis ?? null,
-      logs: [...logs],
-    };
-
-    res.json(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`ERROR: ${message}`);
-    logger.error('AI analysis of provided data failed', { error: message });
+    logger.error('AI analysis failed', { error: message });
 
     res.status(500).json({
       error: message,
@@ -299,11 +268,11 @@ const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
   console.log(`\n🚀 EzReport API Server running on http://localhost:${PORT}`);
-  console.log(`\nEndpoints:`);
+  console.log(`\nEndpoints (stateful workflow):`);
   console.log(`  GET  /api/ping            - Health check`);
-  console.log(`  POST /api/collect-data    - Collect sprint data from Jira`);
-  console.log(`  POST /api/generate-report - Generate report using AI`);
-  console.log(`  POST /api/analyze         - Strategic analysis (collects data + AI)`);
-  console.log(`  POST /api/analyze-data    - AI analysis of provided data (no Jira fetch)`);
+  console.log(`  POST /api/clear           - Clear server state`);
+  console.log(`  POST /api/collect-data    - Step 1: Collect sprint data from Jira`);
+  console.log(`  POST /api/analyze-data    - Step 2: AI analysis of collected data`);
+  console.log(`  POST /api/generate-report - Step 3: Generate report from state`);
   console.log(`\nMOCK_MODE: ${process.env.MOCK_MODE === 'true' ? 'ON' : 'OFF'}\n`);
 });
