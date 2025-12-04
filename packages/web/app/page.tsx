@@ -1,68 +1,119 @@
 'use client';
 
-import { useState } from 'react';
-import { WorkflowStep, SprintReportWorkflowParams, RunStepResponse } from '@/types/workflow';
-import { runStep } from '@/lib/apiClient';
-import { ControlPanel } from '@/components/ControlPanel';
-import { ResultsPanel } from '@/components/ResultsPanel';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ConsolePanel, ConsoleHeading, BackendStatus } from '@/components/console';
 
 export default function Home() {
-  const [response, setResponse] = useState<RunStepResponse | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleRunStep = async (step: WorkflowStep, params: SprintReportWorkflowParams) => {
-    setIsRunning(true);
-    setError(null);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
 
-    try {
-      const result = await runStep(step, params);
-      setResponse(result);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Workflow step failed:', err);
-    } finally {
-      setIsRunning(false);
-    }
-  };
+      if (e.key === '1') router.push('/stage-1');
+      if (e.key === '2') router.push('/stage-2');
+      if (e.key === '3') router.push('/stage-3');
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-black p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
         <div className="mb-8 border-b border-green-500 pb-4">
-          <h1 className="text-green-500 font-mono text-2xl md:text-3xl mb-2">
+          <ConsoleHeading level={1} className="mb-2">
             EzReport Web Console
-          </h1>
+          </ConsoleHeading>
           <p className="text-green-500 font-mono text-sm opacity-80">
             Sprint Report Workflow Control Panel
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 border border-red-500 bg-black p-4">
-            <div className="text-red-500 font-mono text-sm">
-              [ERROR] {error}
-            </div>
-          </div>
-        )}
+        {/* Backend Status */}
+        <ConsolePanel className="mb-8">
+          <BackendStatus />
+        </ConsolePanel>
 
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-green-500 font-mono text-xl mb-4">
-              [ CONTROL PANEL ]
-            </h2>
-            <ControlPanel onRunStep={handleRunStep} isRunning={isRunning} />
-          </div>
+        {/* Navigation Menu */}
+        <ConsolePanel>
+          <ConsoleHeading level={2} className="mb-6">
+            [ WORKFLOW STAGES ]
+          </ConsoleHeading>
 
-          <div>
-            <h2 className="text-green-500 font-mono text-xl mb-4">
-              [ RESULTS ]
-            </h2>
-            <ResultsPanel response={response} />
+          <div className="space-y-4">
+            <NavItem
+              href="/stage-1"
+              number={1}
+              title="Сбор данных и валидация"
+              description="Сбор данных из Jira, оценка качества и полноты информации"
+            />
+
+            <NavItem
+              href="/stage-2"
+              number={2}
+              title="Генерация отчёта по блокам"
+              description="Пошаговая генерация каждого блока с просмотром промптов и входных данных"
+            />
+
+            <NavItem
+              href="/stage-3"
+              number={3}
+              title="Финальная валидация"
+              description="Проверка полного отчёта по правилам и готовность для партнёра"
+            />
           </div>
+        </ConsolePanel>
+
+        {/* Quick Info */}
+        <div className="mt-8 text-green-500/60 font-mono text-xs">
+          <div className="mb-1">[ KEYBOARD SHORTCUTS ]</div>
+          <div>Press number keys (1, 2, 3) to navigate to stages</div>
         </div>
       </div>
     </div>
+  );
+}
+
+interface NavItemProps {
+  href: string;
+  number: number;
+  title: string;
+  description: string;
+}
+
+function NavItem({ href, number, title, description }: NavItemProps) {
+  return (
+    <Link
+      href={href}
+      className="block border border-green-500 p-4 hover:bg-green-500 hover:text-black transition-colors group"
+    >
+      <div className="flex items-start gap-4">
+        <div className="text-green-500 group-hover:text-black font-mono text-xl">
+          [{number}]
+        </div>
+        <div className="flex-1">
+          <div className="font-mono text-lg text-green-500 group-hover:text-black mb-1">
+            Stage {number} — {title}
+          </div>
+          <div className="font-mono text-sm text-green-500/70 group-hover:text-black/70">
+            {description}
+          </div>
+        </div>
+        <div className="text-green-500 group-hover:text-black font-mono">
+          →
+        </div>
+      </div>
+    </Link>
   );
 }

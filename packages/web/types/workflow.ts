@@ -59,12 +59,23 @@ export interface NotionPageResult {
   url?: string;
 }
 
+/** Debug info for a single report block (used in Stage 2 UI) */
+export interface SprintReportBlockDebug {
+  blockId: string;
+  title: string;
+  promptTemplate?: string;
+  inputDataPreview?: unknown;
+  lastResultText?: string;
+}
+
 export interface SprintReportWorkflowResult {
   sprint?: SprintInfo;
   dataValidation?: SprintDataValidationResult | null;
   report?: SprintReportStructured | null;
   reportValidation?: SprintReportValidationResult | null;
   notionPage?: NotionPageResult | null;
+  /** Optional debug info for block-by-block generation UI */
+  blocksDebug?: SprintReportBlockDebug[];
 }
 
 export interface RunStepResponse {
