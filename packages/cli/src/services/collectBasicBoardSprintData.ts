@@ -271,7 +271,7 @@ function generateMockStrategicAnalysis(): StrategicAnalysis {
 /**
  * Perform strategic analysis using AI.
  */
-async function performStrategicAnalysis(
+export async function performStrategicAnalysis(
   version: VersionMeta | undefined,
   currentSprint: SprintCardData | undefined,
   previousSprint: SprintCardData | undefined,

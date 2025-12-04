@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { RunStepResponse } from '@/types/workflow';
-import { runStep } from '@/lib/apiClient';
+import { GenerateReportResponse } from '@/types/workflow';
+import { generateReport } from '@/lib/apiClient';
 import {
   ConsolePanel,
   ConsoleHeading,
   ConsoleButton,
+  ConsoleInput,
 } from '@/components/console';
 
 // =============================================================================
@@ -56,31 +57,31 @@ const REPORT_STRUCTURE: StructureItem[] = [
 // =============================================================================
 
 export default function Stage2Page() {
-  const [response, setResponse] = useState<RunStepResponse | null>(null);
+  const [response, setResponse] = useState<GenerateReportResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [boardId, setBoardId] = useState('133');
 
   const handleGenerate = async () => {
     setIsRunning(true);
     setError(null);
 
     try {
-      const result = await runStep('generate', {
-        mockMode: false,
-        boardId: '133',
+      const result = await generateReport({
+        boardId: boardId.trim() || undefined,
       });
       setResponse(result);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Generate step failed:', err);
+      console.error('Generate report failed:', err);
     } finally {
       setIsRunning(false);
     }
   };
 
-  const report = response?.result?.report;
+  const report = response?.report;
 
   return (
     <div className="min-h-screen bg-black p-4 md:p-8">
@@ -108,7 +109,7 @@ export default function Stage2Page() {
             [STAGE 2] Генерация отчёта
           </ConsoleHeading>
           <p className="text-green-500 font-mono text-sm opacity-80">
-            Генерация полного отчёта по данным спринта одним запросом
+            Генерация полного отчёта по данным спринта
           </p>
         </div>
 
@@ -118,8 +119,15 @@ export default function Stage2Page() {
           </div>
         )}
 
-        {/* Generate Button */}
+        {/* Controls */}
         <div className="mb-8 flex items-center gap-4">
+          <ConsoleInput
+            label="Board ID:"
+            value={boardId}
+            onChange={setBoardId}
+            disabled={isRunning}
+            placeholder="e.g., 133"
+          />
           <ConsoleButton onClick={handleGenerate} disabled={isRunning}>
             {isRunning ? '[ GENERATING... ]' : '[GENERATE REPORT]'}
           </ConsoleButton>

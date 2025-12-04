@@ -1,44 +1,29 @@
 /**
  * HTTP Server for EzReport Web Console
  *
- * Provides REST API endpoints for the sprint report workflow:
- * - GET /api/workflow/ping - Health check
- * - POST /api/workflow/run-step - Execute workflow steps
+ * Simple REST API:
+ * - GET /api/ping - Health check
+ * - POST /api/collect-data - Collect sprint data from Jira
+ * - POST /api/generate-report - Generate report using AI
  */
 
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 
-import {
-  collectSprintData,
-  generateSprintReportBlocks,
-  runSprintReportWorkflow,
-  validateSprintData,
-  validateSprintReport,
-} from './services/sprintReportWorkflow';
-import { collectBasicBoardSprintData } from './services/collectBasicBoardSprintData';
-import { JIRA_CONFIG } from './config';
-import { jiraClient } from './jira/client';
-import type {
-  CollectedSprintData,
-  SprintDataValidationResult,
-  SprintReportWorkflowResult as CLIWorkflowResult,
-} from './services/workflowTypes';
+import { runSprintReportWorkflow } from './services/sprintReportWorkflow';
+import { collectBasicBoardSprintData, performStrategicAnalysis } from './services/collectBasicBoardSprintData';
 import type { BasicBoardSprintData, SprintCardData } from './domain/BoardSprintSnapshot';
 import type { SprintReportStructured, SprintIssue } from './ai/types';
 import { logger } from './utils/logger';
 
 // =============================================================================
-// Types (matching web/types/workflow.ts)
+// Types
 // =============================================================================
 
-type WorkflowStep = 'collect' | 'generate' | 'validate' | 'full';
-
-interface SprintReportWorkflowParams {
+interface SprintReportParams {
+  boardId?: string;
   sprintId?: string;
   sprintName?: string;
-  boardId?: string;
-  extra?: Record<string, unknown>;
   mockMode?: boolean;
 }
 
@@ -93,10 +78,7 @@ interface NotionPageResult {
   url?: string;
 }
 
-// =============================================================================
-// Types for Basic Board Sprint Data (Step 1)
-// =============================================================================
-
+// Basic Board Sprint Data Types
 interface SprintMetaWeb {
   id: string;
   name: string;
@@ -179,29 +161,26 @@ interface BasicBoardSprintDataWeb {
   };
 }
 
-interface SprintReportWorkflowResultWeb {
+// Response types
+interface CollectDataResponse {
   sprint?: SprintInfo;
+  basicBoardData?: BasicBoardSprintDataWeb | null;
   dataValidation?: SprintDataValidationResultWeb | null;
+  logs?: string[];
+}
+
+interface GenerateReportResponse {
+  sprint?: SprintInfo;
   report?: SprintReportStructuredWeb | null;
   reportValidation?: SprintReportValidationResultWeb | null;
   notionPage?: NotionPageResult | null;
-  basicBoardData?: BasicBoardSprintDataWeb | null;
-}
-
-interface RunStepResponse {
-  step: WorkflowStep;
-  params: SprintReportWorkflowParams;
-  result: SprintReportWorkflowResultWeb | null;
   logs?: string[];
 }
 
 // =============================================================================
-// State (simple in-memory state for workflow progress)
+// Logs
 // =============================================================================
 
-let lastCollectedData: CollectedSprintData | null = null;
-let lastDataValidation: SprintDataValidationResult | null = null;
-let lastReport: SprintReportStructured | null = null;
 const logs: string[] = [];
 
 function addLog(message: string): void {
@@ -215,120 +194,7 @@ function clearLogs(): void {
 }
 
 // =============================================================================
-// Converters (CLI types -> Web types)
-// =============================================================================
-
-function convertSprintInfo(cliSprint: CLIWorkflowResult['sprint']): SprintInfo | undefined {
-  if (!cliSprint) return undefined;
-  return {
-    id: String(cliSprint.id),
-    name: cliSprint.name,
-    goal: cliSprint.goal,
-    startDate: cliSprint.startDate,
-    endDate: cliSprint.endDate,
-  };
-}
-
-function convertValidationErrors(
-  errors: Array<{ code: string; message: string; details?: Record<string, unknown> }>,
-): ValidationMessage[] {
-  return errors.map((e) => ({
-    code: e.code,
-    message: e.message,
-    details: e.details ? JSON.stringify(e.details) : undefined,
-  }));
-}
-
-function convertDataValidation(
-  cliValidation: SprintDataValidationResult | null,
-): SprintDataValidationResultWeb | null {
-  if (!cliValidation) return null;
-  return {
-    isValid: cliValidation.isValid,
-    errors: convertValidationErrors(cliValidation.errors),
-    warnings: convertValidationErrors(cliValidation.warnings),
-    goalIssueMatchLevel: cliValidation.goalIssueMatch?.matchLevel,
-    goalIssueMatchComment: cliValidation.goalIssueMatch?.comment,
-  };
-}
-
-function convertReport(cliReport: SprintReportStructured | null): SprintReportStructuredWeb | null {
-  if (!cliReport) return null;
-
-  // Convert structured report to string-based web format
-  return {
-    version: cliReport.version
-      ? `v${cliReport.version.number} (${cliReport.version.deadline}) - ${cliReport.version.goal}`
-      : undefined,
-    sprint: cliReport.sprint
-      ? `Спринт ${cliReport.sprint.number} (${cliReport.sprint.startDate} - ${cliReport.sprint.endDate})\nЦель: ${cliReport.sprint.goal}\nПрогресс: ${cliReport.sprint.progressPercent}%`
-      : undefined,
-    overview: cliReport.overview,
-    notDone: Array.isArray(cliReport.notDone)
-      ? cliReport.notDone
-          .map((item) => `• ${item.title}\n  Причина: ${item.reason}\n  Новый срок: ${item.newDeadline}`)
-          .join('\n\n')
-      : undefined,
-    achievements: Array.isArray(cliReport.achievements)
-      ? cliReport.achievements.map((item) => `• ${item.title}\n  ${item.description}`).join('\n\n')
-      : undefined,
-    artifacts: Array.isArray(cliReport.artifacts)
-      ? cliReport.artifacts
-          .map((item) => `• ${item.title}\n  ${item.description}${item.jiraLink ? `\n  Jira: ${item.jiraLink}` : ''}`)
-          .join('\n\n')
-      : undefined,
-    nextSprint: cliReport.nextSprint
-      ? `Спринт ${cliReport.nextSprint.sprintNumber}\nЦель: ${cliReport.nextSprint.goal}`
-      : undefined,
-    blockers: Array.isArray(cliReport.blockers)
-      ? cliReport.blockers.length > 0
-        ? cliReport.blockers
-            .map((item) => `• ${item.title}\n  ${item.description}\n  Решение: ${item.resolutionProposal}`)
-            .join('\n\n')
-        : 'Блокеров не выявлено'
-      : undefined,
-    pmQuestions: Array.isArray(cliReport.pmQuestions)
-      ? cliReport.pmQuestions.length > 0
-        ? cliReport.pmQuestions.map((item) => `• ${item.title}\n  ${item.description}`).join('\n\n')
-        : 'Вопросов нет'
-      : undefined,
-  };
-}
-
-function convertReportValidation(
-  cliValidation: CLIWorkflowResult['reportValidation'],
-): SprintReportValidationResultWeb | null {
-  if (!cliValidation) return null;
-  return {
-    isValid: cliValidation.isValid,
-    errors: convertValidationErrors(cliValidation.errors),
-    warnings: convertValidationErrors(cliValidation.warnings),
-    partnerReadiness: cliValidation.partnerReadiness
-      ? {
-          isPartnerReady: cliValidation.partnerReadiness.isPartnerReady,
-          comments: cliValidation.partnerReadiness.comments,
-        }
-      : undefined,
-  };
-}
-
-function convertCLIResult(cliResult: CLIWorkflowResult): SprintReportWorkflowResultWeb {
-  return {
-    sprint: convertSprintInfo(cliResult.sprint),
-    dataValidation: convertDataValidation(cliResult.dataValidation),
-    report: convertReport(cliResult.report),
-    reportValidation: convertReportValidation(cliResult.reportValidation),
-    notionPage: cliResult.notionPage
-      ? { id: cliResult.notionPage.id, url: cliResult.notionPage.url }
-      : null,
-    basicBoardData: cliResult.basicBoardData
-      ? convertBasicBoardSprintData(cliResult.basicBoardData)
-      : null,
-  };
-}
-
-// =============================================================================
-// Basic Board Sprint Data Converters
+// Converters
 // =============================================================================
 
 function convertSprintIssue(issue: SprintIssue): SprintIssueWeb {
@@ -405,243 +271,56 @@ function convertBasicBoardSprintData(data: BasicBoardSprintData): BasicBoardSpri
   };
 }
 
-// =============================================================================
-// Step Handlers
-// =============================================================================
+function convertReport(cliReport: SprintReportStructured | null): SprintReportStructuredWeb | null {
+  if (!cliReport) return null;
 
-async function handleCollect(params: SprintReportWorkflowParams): Promise<SprintReportWorkflowResultWeb> {
-  clearLogs();
-  addLog('Starting data collection...');
-  addLog(`Mock mode: ${params.mockMode ? 'ON' : 'OFF'}`);
-
-  // =========================================================================
-  // New Step 1: Collect basic board sprint data (if boardId is provided)
-  // =========================================================================
-  if (params.boardId) {
-    addLog(`Collecting basic board sprint data for board ${params.boardId}...`);
-
-    try {
-      const basicBoardData = await collectBasicBoardSprintData({
-        boardId: params.boardId,
-        mockMode: params.mockMode ?? false,
-      });
-
-      const previousIssueCount = basicBoardData.previousSprint?.issues.length ?? 0;
-      const currentIssueCount = basicBoardData.currentSprint?.issues.length ?? 0;
-
-      addLog(`Previous sprint: ${basicBoardData.availability.hasPreviousSprint ? 'found' : 'not found'}`);
-      if (basicBoardData.previousSprint) {
-        addLog(`  - Name: ${basicBoardData.previousSprint.sprint.name}`);
-        addLog(`  - Issues: ${previousIssueCount}`);
-        addLog(`  - Goal match: ${basicBoardData.previousSprint.goalMatchLevel}`);
-      }
-
-      addLog(`Current sprint: ${basicBoardData.availability.hasCurrentSprint ? 'found' : 'not found'}`);
-      if (basicBoardData.currentSprint) {
-        addLog(`  - Name: ${basicBoardData.currentSprint.sprint.name}`);
-        addLog(`  - Issues: ${currentIssueCount}`);
-        addLog(`  - Goal match: ${basicBoardData.currentSprint.goalMatchLevel}`);
-      }
-
-      addLog('Data collection complete');
-
-      // Return the collected data (legacy collection skipped - not needed for Stage 1)
-      return {
-        sprint: basicBoardData.currentSprint ? {
-          id: basicBoardData.currentSprint.sprint.id,
-          name: basicBoardData.currentSprint.sprint.name,
-          goal: basicBoardData.currentSprint.sprint.goal,
-          startDate: basicBoardData.currentSprint.sprint.startDate,
-          endDate: basicBoardData.currentSprint.sprint.endDate,
-        } : undefined,
-        dataValidation: null,
-        report: null,
-        reportValidation: null,
-        notionPage: null,
-        basicBoardData: convertBasicBoardSprintData(basicBoardData),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`ERROR during board data collection: ${message}`);
-      
-      // Return error result
-      return {
-        sprint: undefined,
-        dataValidation: null,
-        report: null,
-        reportValidation: null,
-        notionPage: null,
-        basicBoardData: {
-          boardId: params.boardId,
-          previousSprint: undefined,
-          currentSprint: undefined,
-          availability: {
-            hasPreviousSprint: false,
-            hasCurrentSprint: false,
-          },
-        },
-      };
-    }
-  }
-
-  // =========================================================================
-  // Legacy Step 1: Collect by sprint name/id (backward compatibility)
-  // =========================================================================
-  let sprintNameOrId = params.sprintName || params.sprintId || '';
-
-  // If boardId is provided but basic collection failed, try to get active sprint
-  if (params.boardId && !sprintNameOrId) {
-    addLog(`Looking for active sprint on board ${params.boardId}...`);
-    
-    // Temporarily set the board ID in config
-    const originalBoardId = JIRA_CONFIG.boardId;
-    (JIRA_CONFIG as any).boardId = params.boardId;
-    
-    try {
-      const recentSprints = await jiraClient.getRecentSprints();
-      sprintNameOrId = recentSprints.current.name;
-      addLog(`Found active sprint: ${sprintNameOrId}`);
-    } catch (error) {
-      addLog(`Failed to get active sprint from board, using board ID as sprint name`);
-      sprintNameOrId = params.boardId;
-    } finally {
-      // Restore original board ID
-      (JIRA_CONFIG as any).boardId = originalBoardId;
-    }
-  }
-
-  if (!sprintNameOrId) {
-    sprintNameOrId = 'default';
-  }
-
-  try {
-    addLog(`Collecting data for sprint: ${sprintNameOrId}`);
-    // Type assertion needed due to type definition mismatch in workflow code
-    lastCollectedData = await collectSprintData({
-      sprintNameOrId,
-      versionMeta: params.extra,
-      mockMode: params.mockMode ?? false,
-    } as any);
-    addLog(`Collected ${lastCollectedData.issues.length} issues`);
-
-    addLog('Validating data...');
-    lastDataValidation = await validateSprintData(lastCollectedData);
-    addLog(`Data validation: ${lastDataValidation.isValid ? 'PASSED' : 'FAILED'}`);
-
-    return {
-      sprint: convertSprintInfo(lastCollectedData.sprintInfo as any),
-      dataValidation: convertDataValidation(lastDataValidation),
-      report: null,
-      reportValidation: null,
-      notionPage: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`ERROR: ${message}`);
-    throw error;
-  }
+  return {
+    version: cliReport.version
+      ? `v${cliReport.version.number} (${cliReport.version.deadline}) - ${cliReport.version.goal}`
+      : undefined,
+    sprint: cliReport.sprint
+      ? `Спринт ${cliReport.sprint.number} (${cliReport.sprint.startDate} - ${cliReport.sprint.endDate})\nЦель: ${cliReport.sprint.goal}\nПрогресс: ${cliReport.sprint.progressPercent}%`
+      : undefined,
+    overview: cliReport.overview,
+    notDone: Array.isArray(cliReport.notDone)
+      ? cliReport.notDone
+          .map((item) => `• ${item.title}\n  Причина: ${item.reason}\n  Новый срок: ${item.newDeadline}`)
+          .join('\n\n')
+      : undefined,
+    achievements: Array.isArray(cliReport.achievements)
+      ? cliReport.achievements.map((item) => `• ${item.title}\n  ${item.description}`).join('\n\n')
+      : undefined,
+    artifacts: Array.isArray(cliReport.artifacts)
+      ? cliReport.artifacts
+          .map((item) => `• ${item.title}\n  ${item.description}${item.jiraLink ? `\n  Jira: ${item.jiraLink}` : ''}`)
+          .join('\n\n')
+      : undefined,
+    nextSprint: cliReport.nextSprint
+      ? `Спринт ${cliReport.nextSprint.sprintNumber}\nЦель: ${cliReport.nextSprint.goal}`
+      : undefined,
+    blockers: Array.isArray(cliReport.blockers)
+      ? cliReport.blockers.length > 0
+        ? cliReport.blockers
+            .map((item) => `• ${item.title}\n  ${item.description}\n  Решение: ${item.resolutionProposal}`)
+            .join('\n\n')
+        : 'Блокеров не выявлено'
+      : undefined,
+    pmQuestions: Array.isArray(cliReport.pmQuestions)
+      ? cliReport.pmQuestions.length > 0
+        ? cliReport.pmQuestions.map((item) => `• ${item.title}\n  ${item.description}`).join('\n\n')
+        : 'Вопросов нет'
+      : undefined,
+  };
 }
 
-async function handleGenerate(params: SprintReportWorkflowParams): Promise<SprintReportWorkflowResultWeb> {
-  addLog('Starting report generation...');
-
-  // If no collected data, collect first
-  if (!lastCollectedData || !lastDataValidation) {
-    addLog('No collected data found, collecting first...');
-    await handleCollect(params);
-  }
-
-  if (!lastCollectedData || !lastDataValidation) {
-    throw new Error('Failed to collect data before generation');
-  }
-
-  try {
-    addLog('Generating report blocks...');
-    lastReport = await generateSprintReportBlocks(lastCollectedData, lastDataValidation);
-    addLog('Report generation complete');
-
-    return {
-      sprint: convertSprintInfo(lastCollectedData.sprintInfo as any),
-      dataValidation: convertDataValidation(lastDataValidation),
-      report: convertReport(lastReport),
-      reportValidation: null,
-      notionPage: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`ERROR: ${message}`);
-    throw error;
-  }
-}
-
-async function handleValidate(params: SprintReportWorkflowParams): Promise<SprintReportWorkflowResultWeb> {
-  addLog('Starting report validation...');
-
-  // If no report, generate first
-  if (!lastReport || !lastCollectedData) {
-    addLog('No report found, generating first...');
-    await handleGenerate(params);
-  }
-
-  if (!lastReport || !lastCollectedData) {
-    throw new Error('Failed to generate report before validation');
-  }
-
-  try {
-    addLog('Validating report...');
-    const reportValidation = await validateSprintReport(lastReport, lastCollectedData);
-    addLog(`Report validation: ${reportValidation.isValid ? 'PASSED' : 'FAILED'}`);
-
-    return {
-      sprint: convertSprintInfo(lastCollectedData.sprintInfo as any),
-      dataValidation: convertDataValidation(lastDataValidation),
-      report: convertReport(lastReport),
-      reportValidation: convertReportValidation(reportValidation),
-      notionPage: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`ERROR: ${message}`);
-    throw error;
-  }
-}
-
-async function handleFull(params: SprintReportWorkflowParams): Promise<SprintReportWorkflowResultWeb> {
-  clearLogs();
-  addLog('Starting full workflow...');
-
-  const sprintNameOrId = params.sprintName || params.sprintId || params.boardId || 'default';
-
-  // Set mock mode via environment if requested
-  if (params.mockMode) {
-    process.env.MOCK_MODE = 'true';
-  }
-
-  try {
-    const cliResult = await runSprintReportWorkflow({
-      sprintNameOrId,
-      dryRun: true, // Don't create Notion page from web console for now
-    });
-
-    // Store for subsequent calls
-    if (cliResult.collectedData) {
-      lastCollectedData = cliResult.collectedData;
-    }
-    if (cliResult.dataValidation) {
-      lastDataValidation = cliResult.dataValidation;
-    }
-    if (cliResult.report) {
-      lastReport = cliResult.report;
-    }
-
-    addLog('Full workflow complete');
-
-    return convertCLIResult(cliResult);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`ERROR: ${message}`);
-    throw error;
-  }
+function convertValidationErrors(
+  errors: Array<{ code: string; message: string; details?: Record<string, unknown> }>,
+): ValidationMessage[] {
+  return errors.map((e) => ({
+    code: e.code,
+    message: e.message,
+    details: e.details ? JSON.stringify(e.details) : undefined,
+  }));
 }
 
 // =============================================================================
@@ -654,60 +333,346 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/api/workflow/ping', (_req: Request, res: Response) => {
+app.get('/api/ping', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Run workflow step
-app.post('/api/workflow/run-step', async (req: Request, res: Response) => {
-  const { step, params } = req.body as { step: WorkflowStep; params: SprintReportWorkflowParams };
-
-  if (!step) {
-    res.status(400).json({ error: 'Missing step parameter' });
-    return;
-  }
-
-  logger.info(`Running step: ${step}`, { params });
+// Collect sprint data from Jira
+app.post('/api/collect-data', async (req: Request, res: Response) => {
+  const params = req.body as SprintReportParams;
+  
+  clearLogs();
+  addLog('Collecting sprint data...');
+  addLog(`Board ID: ${params.boardId || 'not specified'}`);
+  addLog(`Mock mode: ${params.mockMode ? 'ON' : 'OFF'}`);
 
   try {
-    let result: SprintReportWorkflowResultWeb;
-
-    switch (step) {
-      case 'collect':
-        result = await handleCollect(params || {});
-        break;
-      case 'generate':
-        result = await handleGenerate(params || {});
-        break;
-      case 'validate':
-        result = await handleValidate(params || {});
-        break;
-      case 'full':
-        result = await handleFull(params || {});
-        break;
-      default:
-        res.status(400).json({ error: `Unknown step: ${step}` });
-        return;
+    if (!params.boardId) {
+      res.status(400).json({ error: 'boardId is required' });
+      return;
     }
 
-    const response: RunStepResponse = {
-      step,
-      params: params || {},
-      result,
+    const basicBoardData = await collectBasicBoardSprintData({
+      boardId: params.boardId,
+      mockMode: params.mockMode ?? false,
+    });
+
+    addLog(`Previous sprint: ${basicBoardData.availability.hasPreviousSprint ? 'found' : 'not found'}`);
+    addLog(`Current sprint: ${basicBoardData.availability.hasCurrentSprint ? 'found' : 'not found'}`);
+    addLog('Data collection complete');
+
+    const response: CollectDataResponse = {
+      sprint: basicBoardData.currentSprint ? {
+        id: basicBoardData.currentSprint.sprint.id,
+        name: basicBoardData.currentSprint.sprint.name,
+        goal: basicBoardData.currentSprint.sprint.goal,
+        startDate: basicBoardData.currentSprint.sprint.startDate,
+        endDate: basicBoardData.currentSprint.sprint.endDate,
+      } : undefined,
+      basicBoardData: convertBasicBoardSprintData(basicBoardData),
+      dataValidation: null,
       logs: [...logs],
     };
 
     res.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.error(`Step ${step} failed`, { error: message });
+    addLog(`ERROR: ${message}`);
+    logger.error('Collect data failed', { error: message });
 
     res.status(500).json({
-      step,
-      params: params || {},
-      result: null,
-      logs: [...logs, `[ERROR] ${message}`],
       error: message,
+      logs: [...logs],
+    });
+  }
+});
+
+// Generate report using AI
+app.post('/api/generate-report', async (req: Request, res: Response) => {
+  const params = req.body as SprintReportParams;
+  
+  clearLogs();
+  addLog('Generating report...');
+
+  const sprintNameOrId = params.sprintName || params.sprintId || params.boardId || 'default';
+
+  if (params.mockMode) {
+    process.env.MOCK_MODE = 'true';
+  }
+
+  try {
+    addLog(`Sprint: ${sprintNameOrId}`);
+    
+    const cliResult = await runSprintReportWorkflow({
+      sprintNameOrId,
+      dryRun: true,
+    });
+
+    addLog('Report generation complete');
+
+    const response: GenerateReportResponse = {
+      sprint: cliResult.sprint ? {
+        id: String(cliResult.sprint.id),
+        name: cliResult.sprint.name,
+        goal: cliResult.sprint.goal,
+        startDate: cliResult.sprint.startDate,
+        endDate: cliResult.sprint.endDate,
+      } : undefined,
+      report: convertReport(cliResult.report),
+      reportValidation: cliResult.reportValidation ? {
+        isValid: cliResult.reportValidation.isValid,
+        errors: convertValidationErrors(cliResult.reportValidation.errors),
+        warnings: convertValidationErrors(cliResult.reportValidation.warnings),
+        partnerReadiness: cliResult.reportValidation.partnerReadiness ? {
+          isPartnerReady: cliResult.reportValidation.partnerReadiness.isPartnerReady,
+          comments: cliResult.reportValidation.partnerReadiness.comments,
+        } : undefined,
+      } : null,
+      notionPage: cliResult.notionPage ? {
+        id: cliResult.notionPage.id,
+        url: cliResult.notionPage.url,
+      } : null,
+      logs: [...logs],
+    };
+
+    res.json(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`ERROR: ${message}`);
+    logger.error('Generate report failed', { error: message });
+
+    res.status(500).json({
+      error: message,
+      logs: [...logs],
+    });
+  }
+});
+
+// Strategic analysis using AI (with data collection)
+app.post('/api/analyze', async (req: Request, res: Response) => {
+  const params = req.body as SprintReportParams;
+  
+  clearLogs();
+  addLog('Running strategic analysis...');
+
+  try {
+    if (!params.boardId) {
+      res.status(400).json({ error: 'boardId is required' });
+      return;
+    }
+
+    addLog(`Board ID: ${params.boardId}`);
+
+    // First collect data
+    const basicBoardData = await collectBasicBoardSprintData({
+      boardId: params.boardId,
+      mockMode: params.mockMode ?? false,
+    });
+
+    if (!basicBoardData.currentSprint) {
+      addLog('No current sprint found, cannot analyze');
+      res.status(400).json({ 
+        error: 'No current sprint found',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    addLog('Running AI analysis...');
+
+    // Run strategic analysis
+    const analysis = await performStrategicAnalysis(
+      basicBoardData.activeVersion,
+      basicBoardData.currentSprint,
+      basicBoardData.previousSprint,
+      params.mockMode ?? false,
+    );
+
+    addLog('Analysis complete');
+
+    const response = {
+      analysis: analysis ? {
+        versionSprintAlignment: {
+          level: analysis.versionSprintAlignment.level,
+          comment: analysis.versionSprintAlignment.comment,
+          recommendations: analysis.versionSprintAlignment.recommendations,
+        },
+        sprintTasksAlignment: {
+          level: analysis.sprintTasksAlignment.level,
+          comment: analysis.sprintTasksAlignment.comment,
+          directlyRelatedPercent: analysis.sprintTasksAlignment.directlyRelatedPercent,
+          unrelatedTasks: analysis.sprintTasksAlignment.unrelatedTasks,
+        },
+        overallScore: analysis.overallScore,
+        summary: analysis.summary,
+        demoRecommendations: analysis.demoRecommendations?.map(rec => ({
+          issueKey: rec.issueKey,
+          summary: rec.summary,
+          wowFactor: rec.wowFactor,
+          demoComplexity: rec.demoComplexity,
+          suggestedFormat: rec.suggestedFormat,
+        })),
+      } : null,
+      logs: [...logs],
+    };
+
+    res.json(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`ERROR: ${message}`);
+    logger.error('Strategic analysis failed', { error: message });
+
+    res.status(500).json({
+      error: message,
+      logs: [...logs],
+    });
+  }
+});
+
+// AI analysis of already collected data (no Jira fetch)
+interface AnalyzeDataRequest {
+  activeVersion?: VersionMetaWeb;
+  currentSprint?: SprintCardDataWeb;
+  previousSprint?: SprintCardDataWeb;
+  mockMode?: boolean;
+}
+
+app.post('/api/analyze-data', async (req: Request, res: Response) => {
+  const params = req.body as AnalyzeDataRequest;
+  
+  clearLogs();
+  addLog('Running AI analysis on provided data...');
+
+  try {
+    if (!params.currentSprint) {
+      res.status(400).json({ error: 'currentSprint is required' });
+      return;
+    }
+
+    addLog(`Sprint: ${params.currentSprint.sprint.name}`);
+    addLog(`Issues count: ${params.currentSprint.issues.length}`);
+
+    // Convert web types back to domain types for analysis
+    const activeVersion = params.activeVersion ? {
+      id: params.activeVersion.id,
+      name: params.activeVersion.name,
+      description: params.activeVersion.description,
+      releaseDate: params.activeVersion.releaseDate,
+      released: params.activeVersion.released,
+      progressPercent: params.activeVersion.progressPercent,
+    } : undefined;
+
+    const currentSprint: SprintCardData = {
+      sprint: {
+        id: params.currentSprint.sprint.id,
+        name: params.currentSprint.sprint.name,
+        state: params.currentSprint.sprint.state,
+        startDate: params.currentSprint.sprint.startDate,
+        endDate: params.currentSprint.sprint.endDate,
+        goal: params.currentSprint.sprint.goal,
+        goalIsGenerated: params.currentSprint.sprint.goalIsGenerated,
+      },
+      issues: params.currentSprint.issues.map(i => ({
+        key: i.key,
+        summary: i.summary,
+        status: i.status,
+        statusCategory: i.statusCategory,
+        storyPoints: i.storyPoints,
+        assignee: i.assignee,
+        artifact: i.artifact,
+      })),
+      goalMatchLevel: params.currentSprint.goalMatchLevel,
+      goalMatchComment: params.currentSprint.goalMatchComment,
+      recommendedArtifactIssues: params.currentSprint.recommendedArtifactIssues.map(i => ({
+        key: i.key,
+        summary: i.summary,
+        status: i.status,
+        statusCategory: i.statusCategory,
+        storyPoints: i.storyPoints,
+        assignee: i.assignee,
+        artifact: i.artifact,
+      })),
+    };
+
+    const previousSprint: SprintCardData | undefined = params.previousSprint ? {
+      sprint: {
+        id: params.previousSprint.sprint.id,
+        name: params.previousSprint.sprint.name,
+        state: params.previousSprint.sprint.state,
+        startDate: params.previousSprint.sprint.startDate,
+        endDate: params.previousSprint.sprint.endDate,
+        goal: params.previousSprint.sprint.goal,
+        goalIsGenerated: params.previousSprint.sprint.goalIsGenerated,
+      },
+      issues: params.previousSprint.issues.map(i => ({
+        key: i.key,
+        summary: i.summary,
+        status: i.status,
+        statusCategory: i.statusCategory,
+        storyPoints: i.storyPoints,
+        assignee: i.assignee,
+        artifact: i.artifact,
+      })),
+      goalMatchLevel: params.previousSprint.goalMatchLevel,
+      goalMatchComment: params.previousSprint.goalMatchComment,
+      recommendedArtifactIssues: params.previousSprint.recommendedArtifactIssues.map(i => ({
+        key: i.key,
+        summary: i.summary,
+        status: i.status,
+        statusCategory: i.statusCategory,
+        storyPoints: i.storyPoints,
+        assignee: i.assignee,
+        artifact: i.artifact,
+      })),
+    } : undefined;
+
+    addLog('Running AI analysis...');
+
+    // Run strategic analysis
+    const analysis = await performStrategicAnalysis(
+      activeVersion,
+      currentSprint,
+      previousSprint,
+      params.mockMode ?? false,
+    );
+
+    addLog('Analysis complete');
+
+    const response = {
+      analysis: analysis ? {
+        versionSprintAlignment: {
+          level: analysis.versionSprintAlignment.level,
+          comment: analysis.versionSprintAlignment.comment,
+          recommendations: analysis.versionSprintAlignment.recommendations,
+        },
+        sprintTasksAlignment: {
+          level: analysis.sprintTasksAlignment.level,
+          comment: analysis.sprintTasksAlignment.comment,
+          directlyRelatedPercent: analysis.sprintTasksAlignment.directlyRelatedPercent,
+          unrelatedTasks: analysis.sprintTasksAlignment.unrelatedTasks,
+        },
+        overallScore: analysis.overallScore,
+        summary: analysis.summary,
+        demoRecommendations: analysis.demoRecommendations?.map(rec => ({
+          issueKey: rec.issueKey,
+          summary: rec.summary,
+          wowFactor: rec.wowFactor,
+          demoComplexity: rec.demoComplexity,
+          suggestedFormat: rec.suggestedFormat,
+        })),
+      } : null,
+      logs: [...logs],
+    };
+
+    res.json(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`ERROR: ${message}`);
+    logger.error('AI analysis of provided data failed', { error: message });
+
+    res.status(500).json({
+      error: message,
+      logs: [...logs],
     });
   }
 });
@@ -721,8 +686,10 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`\n🚀 EzReport API Server running on http://localhost:${PORT}`);
   console.log(`\nEndpoints:`);
-  console.log(`  GET  /api/workflow/ping      - Health check`);
-  console.log(`  POST /api/workflow/run-step  - Execute workflow step`);
+  console.log(`  GET  /api/ping            - Health check`);
+  console.log(`  POST /api/collect-data    - Collect sprint data from Jira`);
+  console.log(`  POST /api/generate-report - Generate report using AI`);
+  console.log(`  POST /api/analyze         - Strategic analysis (collects data + AI)`);
+  console.log(`  POST /api/analyze-data    - AI analysis of provided data (no Jira fetch)`);
   console.log(`\nMOCK_MODE: ${process.env.MOCK_MODE === 'true' ? 'ON' : 'OFF'}\n`);
 });
-

@@ -1,7 +1,9 @@
 import {
-  WorkflowStep,
-  SprintReportWorkflowParams,
-  RunStepResponse,
+  SprintReportParams,
+  CollectDataResponse,
+  GenerateReportResponse,
+  AnalyzeResponse,
+  AnalyzeDataParams,
 } from '@/types/workflow';
 
 const API_BASE_URL =
@@ -9,7 +11,7 @@ const API_BASE_URL =
 
 export async function ping(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/workflow/ping`, {
+    const response = await fetch(`${API_BASE_URL}/api/ping`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -28,16 +30,90 @@ export async function ping(): Promise<boolean> {
   }
 }
 
-export async function runStep(
-  step: WorkflowStep,
-  params: SprintReportWorkflowParams
-): Promise<RunStepResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/workflow/run-step`, {
+/**
+ * Collect sprint data from Jira
+ */
+export async function collectData(
+  params: SprintReportParams
+): Promise<CollectDataResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/collect-data`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ step, params }),
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Generate sprint report using AI
+ */
+export async function generateReport(
+  params: SprintReportParams
+): Promise<GenerateReportResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Run strategic analysis using AI (collects data from Jira first)
+ */
+export async function analyze(
+  params: SprintReportParams
+): Promise<AnalyzeResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Run AI analysis on already collected data (no Jira fetch)
+ */
+export async function analyzeData(
+  params: AnalyzeDataParams
+): Promise<AnalyzeResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/analyze-data`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {

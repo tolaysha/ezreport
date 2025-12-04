@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  SprintReportWorkflowParams,
-  RunStepResponse,
+  SprintReportParams,
+  CollectDataResponse,
+  GenerateReportResponse,
   SprintCardData,
   GoalMatchLevel,
   AlignmentLevel,
@@ -12,7 +13,7 @@ import {
   StrategicAnalysis,
   DemoRecommendation,
 } from '@/types/workflow';
-import { runStep } from '@/lib/apiClient';
+import { collectData, generateReport } from '@/lib/apiClient';
 import {
   ConsolePanel,
   ConsoleHeading,
@@ -512,44 +513,64 @@ function SprintCard({ title, data, variant }: SprintCardProps) {
 // =============================================================================
 
 export default function Stage1Page() {
-  const [response, setResponse] = useState<RunStepResponse | null>(null);
+  const [collectResponse, setCollectResponse] = useState<CollectDataResponse | null>(null);
+  const [reportResponse, setReportResponse] = useState<GenerateReportResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
 
-  // Form state - only Board ID is required, rest is auto-collected
+  // Form state - only Board ID is required
   const [boardId, setBoardId] = useState('133');
 
-  const buildParams = (): SprintReportWorkflowParams | null => {
-    const params: SprintReportWorkflowParams = {};
-
-    if (boardId.trim()) params.boardId = boardId.trim();
-
-    return params;
+  const buildParams = (): SprintReportParams => {
+    return {
+      boardId: boardId.trim() || undefined,
+    };
   };
 
-  const handleRunCollect = async () => {
+  const handleCollectData = async () => {
     const params = buildParams();
-    if (!params) return;
+    if (!params.boardId) {
+      setError('Board ID обязателен');
+      return;
+    }
 
     setIsRunning(true);
     setError(null);
 
     try {
-      const result = await runStep('collect', params);
-      setResponse(result);
+      const result = await collectData(params);
+      setCollectResponse(result);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Collect step failed:', err);
+      console.error('Collect data failed:', err);
     } finally {
       setIsRunning(false);
     }
   };
 
-  const result = response?.result;
-  const basicBoardData = result?.basicBoardData;
+  const handleGenerateReport = async () => {
+    const params = buildParams();
+    
+    setIsRunning(true);
+    setError(null);
+
+    try {
+      const result = await generateReport(params);
+      setReportResponse(result);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Generate report failed:', err);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const basicBoardData = collectResponse?.basicBoardData;
 
   return (
     <div className="min-h-screen bg-black p-4 md:p-8">
@@ -603,7 +624,7 @@ export default function Stage1Page() {
             </div>
           </div>
 
-          <ConsoleButton onClick={handleRunCollect} disabled={isRunning}>
+          <ConsoleButton onClick={handleCollectData} disabled={isRunning}>
             [RUN] Collect Sprint Data
           </ConsoleButton>
         </ConsolePanel>
@@ -699,7 +720,7 @@ export default function Stage1Page() {
                 </div>
               </div>
             </div>
-          ) : !response ? (
+          ) : !collectResponse ? (
             <div className="text-green-500/50 font-mono text-sm">
               [ Нажмите "Collect Sprint Data" для загрузки данных ]
             </div>
@@ -773,109 +794,38 @@ export default function Stage1Page() {
 
             </div>
           ) : (
-            // Fallback to legacy display if no basicBoardData
+            // Fallback if no basicBoardData
             <div className="space-y-6">
-              {result?.sprint && (
+              {collectResponse?.sprint && (
                 <div className="border border-green-500/50 p-4">
                   <div className="text-green-400 font-mono text-sm mb-2">
                     SPRINT INFO:
                   </div>
-                  {result.sprint.name && (
+                  {collectResponse.sprint.name && (
                     <div className="font-mono text-sm text-green-500">
-                      SPRINT: {result.sprint.name}
+                      SPRINT: {collectResponse.sprint.name}
                     </div>
                   )}
-                  {result.sprint.id && (
+                  {collectResponse.sprint.id && (
                     <div className="font-mono text-sm text-green-500">
-                      ID: {result.sprint.id}
+                      ID: {collectResponse.sprint.id}
                     </div>
                   )}
-                  {(result.sprint.startDate || result.sprint.endDate) && (
+                  {(collectResponse.sprint.startDate || collectResponse.sprint.endDate) && (
                     <div className="font-mono text-sm text-green-500">
-                      DATES: {result.sprint.startDate || '?'} -{' '}
-                      {result.sprint.endDate || '?'}
+                      DATES: {collectResponse.sprint.startDate || '?'} -{' '}
+                      {collectResponse.sprint.endDate || '?'}
                     </div>
                   )}
-                  {result.sprint.goal && (
+                  {collectResponse.sprint.goal && (
                     <div className="font-mono text-sm text-green-500">
-                      GOAL: {result.sprint.goal}
+                      GOAL: {collectResponse.sprint.goal}
                     </div>
                   )}
                 </div>
               )}
 
-              {result?.dataValidation && (
-                <div className="border border-green-500/50 p-4">
-                  <div className="text-green-400 font-mono text-sm mb-2">
-                    DATA VALIDATION:
-                  </div>
-                  <div className="font-mono text-sm mb-2">
-                    <span className="text-green-500">DATA_VALID: </span>
-                    <span
-                      className={
-                        result.dataValidation.isValid
-                          ? 'text-green-400'
-                          : 'text-red-500'
-                      }
-                    >
-                      {result.dataValidation.isValid ? 'YES' : 'NO'}
-                    </span>
-                  </div>
-                  {result.dataValidation.goalIssueMatchLevel && (
-                    <div className="font-mono text-sm mb-2">
-                      <span className="text-green-500">GOAL_MATCH: </span>
-                      <span
-                        className={
-                          result.dataValidation.goalIssueMatchLevel === 'strong'
-                            ? 'text-green-400'
-                            : result.dataValidation.goalIssueMatchLevel ===
-                                'medium'
-                              ? 'text-yellow-500'
-                              : 'text-red-500'
-                        }
-                      >
-                        {result.dataValidation.goalIssueMatchLevel}
-                      </span>
-                    </div>
-                  )}
-                  {result.dataValidation.goalIssueMatchComment && (
-                    <div className="font-mono text-sm mb-2 text-green-500/80 whitespace-pre-wrap">
-                      {result.dataValidation.goalIssueMatchComment}
-                    </div>
-                  )}
-
-                  {result.dataValidation.errors.length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-red-500 font-mono text-sm mb-1">
-                        ERRORS:
-                      </div>
-                      {result.dataValidation.errors.map((err, idx) => (
-                        <div key={idx} className="text-red-500 font-mono text-sm">
-                          [ERROR] ({err.code || 'no-code'}) {err.message}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {result.dataValidation.warnings.length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-yellow-500 font-mono text-sm mb-1">
-                        WARNINGS:
-                      </div>
-                      {result.dataValidation.warnings.map((warn, idx) => (
-                        <div
-                          key={idx}
-                          className="text-yellow-500 font-mono text-sm"
-                        >
-                          [WARN] ({warn.code || 'no-code'}) {warn.message}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {!result?.sprint && !result?.dataValidation && (
+              {!collectResponse?.sprint && (
                 <div className="font-mono text-sm text-gray-500">
                   [ No data available ]
                 </div>
@@ -891,24 +841,40 @@ export default function Stage1Page() {
             >
               [Toggle Raw JSON]
             </button>
-            {showRawJson && response && (
+            {showRawJson && (collectResponse || reportResponse) && (
               <div className="mt-4 border border-green-500/50 p-4 overflow-auto max-h-96">
                 <pre className="font-mono text-xs text-green-500">
-                  {JSON.stringify(response, null, 2)}
+                  {JSON.stringify({ collectResponse, reportResponse }, null, 2)}
                 </pre>
               </div>
             )}
           </div>
         </ConsolePanel>
 
+        {/* Generate Report Button */}
+        {basicBoardData && (basicBoardData.availability.hasPreviousSprint || basicBoardData.availability.hasCurrentSprint) && (
+          <div className="mt-8">
+            <button
+              onClick={handleGenerateReport}
+              disabled={isRunning}
+              className="w-full border-2 border-cyan-500 text-cyan-500 px-6 py-4 font-mono text-lg hover:bg-cyan-500 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]"
+            >
+              {isRunning ? '[ ГЕНЕРАЦИЯ... ]' : '[ СГЕНЕРИРОВАТЬ ОТЧЁТ ]'}
+            </button>
+            <div className="text-cyan-500/60 font-mono text-xs text-center mt-2">
+              Данные из Jira + промпт + шаблон → итоговый отчёт
+            </div>
+          </div>
+        )}
+
         {/* Navigation to Stage 2 */}
-        {result?.dataValidation?.isValid && (
+        {reportResponse?.report && (
           <div className="mt-8 text-center">
             <Link
               href="/stage-2"
               className="inline-block border border-green-500 text-green-500 px-6 py-3 font-mono hover:bg-green-500 hover:text-black transition-colors"
             >
-              [NEXT] Перейти к Stage 2 — Генерация отчёта →
+              [NEXT] Перейти к Stage 2 — Просмотр отчёта →
             </Link>
           </div>
         )}

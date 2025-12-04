@@ -1,10 +1,7 @@
-export type WorkflowStep = "collect" | "generate" | "validate" | "full";
-
-export interface SprintReportWorkflowParams {
+export interface SprintReportParams {
+  boardId?: string;
   sprintId?: string;
   sprintName?: string;
-  boardId?: string;
-  extra?: Record<string, unknown>;
   mockMode?: boolean;
 }
 
@@ -60,7 +57,7 @@ export interface NotionPageResult {
 }
 
 // =============================================================================
-// Basic Board Sprint Data Types (Step 1 - Two Sprint Cards)
+// Basic Board Sprint Data Types
 // =============================================================================
 
 export interface SprintMeta {
@@ -146,30 +143,33 @@ export interface BasicBoardSprintData {
   };
 }
 
-/** Debug info for a single report block (used in Stage 2 UI) */
-export interface SprintReportBlockDebug {
-  blockId: string;
-  title: string;
-  promptTemplate?: string;
-  inputDataPreview?: unknown;
-  lastResultText?: string;
+// =============================================================================
+// API Response Types
+// =============================================================================
+
+export interface CollectDataResponse {
+  sprint?: SprintInfo;
+  basicBoardData?: BasicBoardSprintData | null;
+  dataValidation?: SprintDataValidationResult | null;
+  logs?: string[];
 }
 
-export interface SprintReportWorkflowResult {
+export interface GenerateReportResponse {
   sprint?: SprintInfo;
-  dataValidation?: SprintDataValidationResult | null;
   report?: SprintReportStructured | null;
   reportValidation?: SprintReportValidationResult | null;
   notionPage?: NotionPageResult | null;
-  /** Optional debug info for block-by-block generation UI */
-  blocksDebug?: SprintReportBlockDebug[];
-  /** Basic board sprint data for Step 1 - two sprint cards */
-  basicBoardData?: BasicBoardSprintData | null;
+  logs?: string[];
 }
 
-export interface RunStepResponse {
-  step: WorkflowStep;
-  params: SprintReportWorkflowParams;
-  result: SprintReportWorkflowResult | null;
+export interface AnalyzeResponse {
+  analysis?: StrategicAnalysis | null;
   logs?: string[];
+}
+
+export interface AnalyzeDataParams {
+  activeVersion?: VersionMeta;
+  currentSprint?: SprintCardData;
+  previousSprint?: SprintCardData;
+  mockMode?: boolean;
 }
