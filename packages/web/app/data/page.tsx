@@ -7,14 +7,14 @@ import type {
   CollectDataResponse,
   StrategicAnalysis,
 } from '@/types/workflow';
-import { collectData, analyzeData } from '@/lib/apiClient';
+import { collectData, analyzeData, generateExpertAnalysis } from '@/lib/apiClient';
 import {
   ConsolePanel,
   ConsoleHeading,
   BackendStatus,
   Breadcrumb,
 } from '@/components/console';
-import { SprintCard, VersionCard, AnalysisPanel } from '@/components/sprint';
+import { SprintCard, VersionCard, AnalysisPanel, ExpertRole, ExpertAnalysisResult } from '@/components/sprint';
 
 
 // =============================================================================
@@ -81,6 +81,11 @@ export default function DataPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
+  // Expert analysis state
+  const [expertAnalysis, setExpertAnalysis] = useState<ExpertAnalysisResult | null>(null);
+  const [isGeneratingExpert, setIsGeneratingExpert] = useState(false);
+  const [selectedExpertRole, setSelectedExpertRole] = useState<ExpertRole | null>(null);
+  
   // Terminal state
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -120,7 +125,6 @@ export default function DataPage() {
 
     setIsRunning(true);
     setAnalysisResult(null);
-    addToHistory(`start ${boardId}`, 'Загрузка данных...', 'info');
 
     try {
       const params: SprintReportParams = { boardId: boardId.trim() };
@@ -132,13 +136,13 @@ export default function DataPage() {
       const hasPrevious = result.basicBoardData?.availability.hasPreviousSprint;
       
       addToHistory(
-        '', 
+        `start ${boardId}`, 
         `✓ Данные загружены: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
         'success'
       );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      addToHistory('', `ERROR: ${errorMessage}`, 'error');
+      addToHistory(`start ${boardId}`, `ERROR: ${errorMessage}`, 'error');
     } finally {
       setIsRunning(false);
     }
@@ -151,7 +155,6 @@ export default function DataPage() {
     }
 
     setIsAnalyzing(true);
-    addToHistory('analyze', 'Запуск AI анализа...', 'info');
 
     try {
       const result = await analyzeData({
@@ -162,13 +165,36 @@ export default function DataPage() {
       });
       if (result.analysis) {
         setAnalysisResult(result.analysis);
-        addToHistory('', '✓ AI анализ завершен', 'success');
+        addToHistory('analyze', '✓ AI анализ завершен', 'success');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      addToHistory('', `ERROR: ${errorMessage}`, 'error');
+      addToHistory('analyze', `ERROR: ${errorMessage}`, 'error');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleGenerateExpertAnalysis = async (role: ExpertRole) => {
+    if (!collectResponse?.basicBoardData?.currentSprint || !analysisResult) {
+      return;
+    }
+
+    setIsGeneratingExpert(true);
+    setSelectedExpertRole(role);
+
+    try {
+      const result = await generateExpertAnalysis({
+        role,
+        currentSprint: collectResponse.basicBoardData.currentSprint,
+        previousSprint: collectResponse.basicBoardData.previousSprint,
+        analysis: analysisResult,
+      });
+      setExpertAnalysis(result);
+    } catch (err) {
+      // Error handling without console logging
+    } finally {
+      setIsGeneratingExpert(false);
     }
   };
 
@@ -309,12 +335,6 @@ export default function DataPage() {
         <ConsolePanel>
           <div className="flex items-center justify-between mb-4">
             <ConsoleHeading level={2}>[ ДАННЫЕ ]</ConsoleHeading>
-            {isRunning && (
-              <span className="text-green-500 font-mono text-sm flex items-center gap-2">
-                <span className="animate-spin">◌</span>
-                загрузка...
-              </span>
-            )}
           </div>
 
           {!collectResponse ? (
@@ -391,6 +411,10 @@ export default function DataPage() {
                 sprintGoal={basicBoardData?.currentSprint?.sprint.goal}
                 currentSprint={basicBoardData?.currentSprint}
                 previousSprint={basicBoardData?.previousSprint}
+                onGenerateExpertAnalysis={handleGenerateExpertAnalysis}
+                expertAnalysis={expertAnalysis}
+                isGeneratingExpert={isGeneratingExpert}
+                selectedExpertRole={selectedExpertRole}
               />
             ) : (
               <AnalysisTriggerPanel

@@ -4,6 +4,49 @@ import type { StrategicAnalysis, DemoRecommendation, SprintCardData } from '@/ty
 import { getAlignmentColor, getAlignmentLabel, getScoreColor, getDemoFormatIcon, getComplexityColor } from './helpers';
 
 // =============================================================================
+// Expert Role Types
+// =============================================================================
+
+export type ExpertRole = 'tech_director' | 'product_director' | 'finance_director';
+
+export interface ExpertRoleConfig {
+  id: ExpertRole;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export const EXPERT_ROLES: ExpertRoleConfig[] = [
+  {
+    id: 'tech_director',
+    label: 'Технический директор',
+    icon: '🔧',
+    description: 'Архитектура, техдолг, производительность команды',
+  },
+  {
+    id: 'product_director',
+    label: 'Директор по продукту',
+    icon: '🎯',
+    description: 'Ценность для пользователя, приоритеты, roadmap',
+  },
+  {
+    id: 'finance_director',
+    label: 'Финансовый директор',
+    icon: '💰',
+    description: 'ROI, стоимость, эффективность инвестиций',
+  },
+];
+
+export interface ExpertAnalysisResult {
+  role: ExpertRole;
+  roleName: string;
+  summary: string;
+  keyInsights: string[];
+  risks: string[];
+  recommendations: string[];
+}
+
+// =============================================================================
 // Demo Recommendation Mini
 // =============================================================================
 
@@ -148,6 +191,182 @@ function SprintStatsPanel({ currentSprint, previousSprint }: SprintStatsProps) {
 }
 
 // =============================================================================
+// In Development Panel
+// =============================================================================
+
+function InDevelopmentPanel() {
+  return (
+    <div className="border border-amber-500/30 bg-amber-500/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-amber-400/70 font-mono text-sm">🚧 В РАЗРАБОТКЕ</span>
+      </div>
+      <div className="space-y-3">
+        <div className="border border-amber-500/20 bg-black/30 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-amber-400 font-mono text-sm">📊 Валидация оценки задач в Story Points</span>
+            <span className="text-amber-500/50 font-mono text-xs px-2 py-0.5 border border-amber-500/30 rounded">
+              скоро
+            </span>
+          </div>
+          <div className="text-amber-500/60 font-mono text-xs">
+            Анализ точности оценки задач: сравнение оценки и фактического времени, 
+            выявление систематических отклонений, рекомендации по калибровке команды.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Expert View Panel
+// =============================================================================
+
+interface ExpertViewPanelProps {
+  currentSprint: SprintCardData | undefined;
+  previousSprint: SprintCardData | undefined;
+  analysis: StrategicAnalysis | undefined;
+  onGenerateExpertAnalysis: (role: ExpertRole) => Promise<void>;
+  expertAnalysis: ExpertAnalysisResult | null;
+  isGenerating: boolean;
+  selectedRole: ExpertRole | null;
+}
+
+function ExpertViewPanel({
+  currentSprint,
+  previousSprint,
+  analysis,
+  onGenerateExpertAnalysis,
+  expertAnalysis,
+  isGenerating,
+  selectedRole,
+}: ExpertViewPanelProps) {
+  const hasData = currentSprint && analysis;
+
+  return (
+    <div className="border border-indigo-500/30 bg-indigo-500/5 p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-indigo-400/70 font-mono text-sm">👔 ВЗГЛЯД ЭКСПЕРТА</span>
+        <span className="text-indigo-500/50 font-mono text-xs px-1.5 py-0.5 bg-indigo-500/10 rounded">🤖 AI</span>
+      </div>
+
+      {!hasData ? (
+        <div className="text-indigo-500/60 font-mono text-xs">
+          Сначала выполните стратегический анализ, чтобы получить экспертную оценку.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Role Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {EXPERT_ROLES.map((role) => (
+              <button
+                key={role.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerateExpertAnalysis(role.id);
+                }}
+                disabled={isGenerating}
+                className={`border p-3 text-left transition-all ${
+                  selectedRole === role.id
+                    ? 'border-indigo-400 bg-indigo-500/20'
+                    : 'border-indigo-500/30 bg-black/30 hover:border-indigo-500/50 hover:bg-indigo-500/10'
+                } ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{role.icon}</span>
+                  <span className="text-indigo-400 font-mono text-sm font-medium">{role.label}</span>
+                </div>
+                <div className="text-indigo-500/60 font-mono text-xs">
+                  {role.description}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Loading State */}
+          {isGenerating && (
+            <div className="border border-indigo-500/30 bg-black/30 p-4">
+              <div className="flex items-center gap-3">
+                <span className="animate-spin text-indigo-400">◌</span>
+                <span className="text-indigo-400 font-mono text-sm animate-pulse">
+                  Генерация экспертного анализа...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Expert Analysis Result */}
+          {expertAnalysis && !isGenerating && (
+            <div className="border border-indigo-500/40 bg-black/40 p-4 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-indigo-500/30">
+                <span className="text-2xl">
+                  {EXPERT_ROLES.find(r => r.id === expertAnalysis.role)?.icon}
+                </span>
+                <span className="text-indigo-300 font-mono text-lg font-bold">
+                  {expertAnalysis.roleName}
+                </span>
+              </div>
+
+              {/* Summary */}
+              <div className="border-l-2 border-indigo-500/50 pl-3">
+                <div className="text-indigo-300 font-mono text-sm">
+                  {expertAnalysis.summary}
+                </div>
+              </div>
+
+              {/* Key Insights */}
+              {expertAnalysis.keyInsights.length > 0 && (
+                <div>
+                  <div className="text-indigo-400/70 font-mono text-xs mb-2">💡 КЛЮЧЕВЫЕ ВЫВОДЫ</div>
+                  <ul className="space-y-1">
+                    {expertAnalysis.keyInsights.map((insight, idx) => (
+                      <li key={idx} className="text-indigo-300/80 font-mono text-xs flex items-start gap-2">
+                        <span className="text-indigo-500">•</span>
+                        <span>{insight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Risks */}
+              {expertAnalysis.risks.length > 0 && (
+                <div>
+                  <div className="text-red-400/70 font-mono text-xs mb-2">⚠️ РИСКИ</div>
+                  <ul className="space-y-1">
+                    {expertAnalysis.risks.map((risk, idx) => (
+                      <li key={idx} className="text-red-300/80 font-mono text-xs flex items-start gap-2">
+                        <span className="text-red-500">•</span>
+                        <span>{risk}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {expertAnalysis.recommendations.length > 0 && (
+                <div>
+                  <div className="text-green-400/70 font-mono text-xs mb-2">✅ РЕКОМЕНДАЦИИ</div>
+                  <ul className="space-y-1">
+                    {expertAnalysis.recommendations.map((rec, idx) => (
+                      <li key={idx} className="text-green-300/80 font-mono text-xs flex items-start gap-2">
+                        <span className="text-green-500">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // Analysis Panel
 // =============================================================================
 
@@ -157,9 +376,23 @@ interface AnalysisPanelProps {
   sprintGoal: string | undefined;
   currentSprint?: SprintCardData;
   previousSprint?: SprintCardData;
+  onGenerateExpertAnalysis?: (role: ExpertRole) => Promise<void>;
+  expertAnalysis?: ExpertAnalysisResult | null;
+  isGeneratingExpert?: boolean;
+  selectedExpertRole?: ExpertRole | null;
 }
 
-export function AnalysisPanel({ analysis, versionGoal, sprintGoal, currentSprint, previousSprint }: AnalysisPanelProps) {
+export function AnalysisPanel({ 
+  analysis, 
+  versionGoal, 
+  sprintGoal, 
+  currentSprint, 
+  previousSprint,
+  onGenerateExpertAnalysis,
+  expertAnalysis,
+  isGeneratingExpert = false,
+  selectedExpertRole = null,
+}: AnalysisPanelProps) {
   if (!analysis) {
     return (
       <div className="border border-gray-500/30 bg-black/50 p-4">
@@ -276,6 +509,22 @@ export function AnalysisPanel({ analysis, versionGoal, sprintGoal, currentSprint
 
       {/* Sprint Statistics Panel */}
       <SprintStatsPanel currentSprint={currentSprint} previousSprint={previousSprint} />
+
+      {/* In Development Section */}
+      <InDevelopmentPanel />
+
+      {/* Expert View Section */}
+      {onGenerateExpertAnalysis && (
+        <ExpertViewPanel
+          currentSprint={currentSprint}
+          previousSprint={previousSprint}
+          analysis={analysis}
+          onGenerateExpertAnalysis={onGenerateExpertAnalysis}
+          expertAnalysis={expertAnalysis ?? null}
+          isGenerating={isGeneratingExpert}
+          selectedRole={selectedExpertRole}
+        />
+      )}
     </div>
   );
 }

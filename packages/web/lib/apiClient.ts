@@ -4,7 +4,10 @@ import {
   GenerateReportResponse,
   AnalyzeResponse,
   AnalyzeDataParams,
+  SprintCardData,
+  StrategicAnalysis,
 } from '@/types/workflow';
+import type { ExpertRole, ExpertAnalysisResult } from '@/components/sprint';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
@@ -157,4 +160,38 @@ export async function generatePartnerReport(
   return {
     report: result.reportMarkdown || '',
   };
+}
+
+/**
+ * Expert analysis params for API
+ */
+export interface ExpertAnalysisParams {
+  role: ExpertRole;
+  currentSprint: SprintCardData;
+  previousSprint?: SprintCardData;
+  analysis: StrategicAnalysis;
+}
+
+/**
+ * Generate expert analysis from a specific role perspective
+ */
+export async function generateExpertAnalysis(
+  params: ExpertAnalysisParams
+): Promise<ExpertAnalysisResult> {
+  const response = await fetch(`${API_BASE_URL}/api/expert-analysis`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`
+    );
+  }
+
+  return response.json();
 }

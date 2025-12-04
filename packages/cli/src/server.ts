@@ -25,6 +25,7 @@ import type {
 
 import { collectBasicBoardSprintData, performStrategicAnalysis } from './services/collectBasicBoardSprintData';
 import { generatePartnerReportMarkdown } from './services/partnerReport';
+import { generateExpertAnalysis, ExpertAnalysisParams } from './ai/expertAnalyzer';
 import { logger } from './utils/logger';
 
 // =============================================================================
@@ -261,6 +262,69 @@ app.post('/api/analyze-data', async (req: Request, res: Response) => {
   }
 });
 
+// Expert analysis from different stakeholder perspectives
+app.post('/api/expert-analysis', async (req: Request, res: Response) => {
+  const params = req.body as ExpertAnalysisParams;
+  
+  clearLogs();
+  addLog(`Running expert analysis (${params.role})...`);
+
+  try {
+    // Use provided data or fall back to state
+    const currentSprint = params.currentSprint ?? state.basicBoardData?.currentSprint;
+    const previousSprint = params.previousSprint ?? state.basicBoardData?.previousSprint;
+    const analysis = params.analysis ?? state.analysis;
+
+    if (!currentSprint) {
+      res.status(400).json({ 
+        error: 'No sprint data available. Please collect data first.',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    if (!analysis) {
+      res.status(400).json({ 
+        error: 'No strategic analysis available. Please run analysis first.',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    if (!params.role) {
+      res.status(400).json({ 
+        error: 'Expert role is required.',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    addLog(`Sprint: ${currentSprint.sprint.name}`);
+    addLog(`Role: ${params.role}`);
+
+    // Run expert analysis
+    const result = await generateExpertAnalysis({
+      role: params.role,
+      currentSprint: currentSprint as SprintCardData,
+      previousSprint: previousSprint as SprintCardData | undefined,
+      analysis,
+    });
+
+    addLog(`Expert analysis (${result.roleName}) complete`);
+
+    res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`ERROR: ${message}`);
+    logger.error('Expert analysis failed', { error: message });
+
+    res.status(500).json({
+      error: message,
+      logs: [...logs],
+    });
+  }
+});
+
 // =============================================================================
 // Start Server
 // =============================================================================
@@ -274,6 +338,7 @@ app.listen(PORT, () => {
   console.log(`  POST /api/clear           - Clear server state`);
   console.log(`  POST /api/collect-data    - Step 1: Collect sprint data from Jira`);
   console.log(`  POST /api/analyze-data    - Step 2: AI analysis of collected data`);
+  console.log(`  POST /api/expert-analysis - Expert analysis (CTO/CPO/CFO perspectives)`);
   console.log(`  POST /api/generate-report - Step 3: Generate report from state`);
   console.log(`\nMOCK_MODE: ${process.env.MOCK_MODE === 'true' ? 'ON' : 'OFF'}\n`);
 });
