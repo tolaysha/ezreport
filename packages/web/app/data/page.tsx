@@ -30,12 +30,7 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
   return (
     <div className="border border-purple-500/30 bg-purple-500/5 p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-purple-400/70 font-mono text-sm">[ 📊 СТРАТЕГИЧЕСКИЙ АНАЛИЗ ]</span>
-          <span className="text-purple-400/70 font-mono text-xs px-1 py-0.5 bg-purple-500/10 rounded">
-            🤖 AI
-          </span>
-        </div>
+        <span className="text-purple-400/70 font-mono text-sm">СТРАТЕГИЧЕСКИЙ АНАЛИЗ</span>
       </div>
       {isAnalyzing ? (
         <div className="py-4">
@@ -49,7 +44,10 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
             Данные загружены. Запустите AI анализ для получения стратегической оценки.
           </div>
           <button
-            onClick={onRunAnalysis}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRunAnalysis();
+            }}
             disabled={isAnalyzing || !hasCurrentSprint}
             className="border border-purple-500 text-purple-400 px-4 py-2 font-mono text-sm hover:bg-purple-500 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -87,7 +85,6 @@ export default function DataPage() {
   const [showCursor, setShowCursor] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Cursor blink
   useEffect(() => {
@@ -111,39 +108,6 @@ export default function DataPage() {
 
   const addToHistory = (command: string, response: string, type: 'success' | 'error' | 'info') => {
     setHistory(prev => [...prev, { command, response, type }]);
-  };
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      if (!bottomRef.current) return;
-      
-      const targetPosition = bottomRef.current.getBoundingClientRect().top + window.scrollY;
-      const startPosition = window.scrollY;
-      const distance = targetPosition - startPosition;
-      const duration = 4000; // 4 секунды
-      let startTime: number | null = null;
-
-      // Ease-in-out функция для плавного начала и конца
-      const easeInOutCubic = (t: number): number => {
-        return t < 0.5 
-          ? 4 * t * t * t 
-          : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      };
-
-      const animateScroll = (currentTime: number) => {
-        if (startTime === null) startTime = currentTime;
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        window.scrollTo(0, startPosition + distance * easeInOutCubic(progress));
-        
-        if (progress < 1) {
-          requestAnimationFrame(animateScroll);
-        }
-      };
-
-      requestAnimationFrame(animateScroll);
-    }, 500);
   };
 
   const handleCollectData = async (boardId: string) => {
@@ -170,9 +134,6 @@ export default function DataPage() {
         `✓ Данные загружены: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
         'success'
       );
-      
-      // Медленно скроллим к низу страницы
-      scrollToBottom();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       addToHistory('', `ERROR: ${errorMessage}`, 'error');
@@ -399,21 +360,6 @@ export default function DataPage() {
               {/* Version Card */}
               <VersionCard version={basicBoardData.activeVersion} />
 
-              {/* Strategic Analysis Panel */}
-              {analysisResult ? (
-                <AnalysisPanel 
-                  analysis={analysisResult}
-                  versionGoal={basicBoardData.activeVersion?.description}
-                  sprintGoal={basicBoardData.currentSprint?.sprint.goal}
-                />
-              ) : (
-                <AnalysisTriggerPanel
-                  isAnalyzing={isAnalyzing}
-                  hasCurrentSprint={!!basicBoardData.currentSprint}
-                  onRunAnalysis={handleRunAnalysis}
-                />
-              )}
-
               {/* Two Sprint Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SprintCard
@@ -439,29 +385,26 @@ export default function DataPage() {
           )}
         </ConsolePanel>
 
-        {/* Navigation to next step */}
-        <div className="mt-8 text-center">
-          {hasData ? (
-            <Link
-              href="/analyse"
-              className="inline-block border border-purple-500/50 px-6 py-3 font-mono text-purple-400 hover:bg-purple-500/10 hover:border-purple-400 transition-colors"
-            >
-              [ UNLOCK STRATEGIC INSIGHTS → ]
-            </Link>
-          ) : (
-            <span className="inline-block border border-purple-500/20 px-6 py-3 font-mono text-purple-500/30 cursor-not-allowed">
-              [ UNLOCK STRATEGIC INSIGHTS → ]
-            </span>
-          )}
-          {!hasData && (
-            <div className="text-green-500/30 font-mono text-xs mt-3">
-              ⏳ Ожидание данных из Jira...
-            </div>
-          )}
-        </div>
-        
-        {/* Scroll anchor */}
-        <div ref={bottomRef} />
+        {/* Strategic Analysis Block - separate from data */}
+        {collectResponse?.basicBoardData && (
+          <ConsolePanel className="mt-8">
+            {analysisResult ? (
+              <AnalysisPanel 
+                analysis={analysisResult}
+                versionGoal={basicBoardData?.activeVersion?.description}
+                sprintGoal={basicBoardData?.currentSprint?.sprint.goal}
+                currentSprint={basicBoardData?.currentSprint}
+                previousSprint={basicBoardData?.previousSprint}
+              />
+            ) : (
+              <AnalysisTriggerPanel
+                isAnalyzing={isAnalyzing}
+                hasCurrentSprint={!!basicBoardData?.currentSprint}
+                onRunAnalysis={handleRunAnalysis}
+              />
+            )}
+          </ConsolePanel>
+        )}
       </div>
     </div>
   );
