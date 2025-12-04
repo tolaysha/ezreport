@@ -166,6 +166,14 @@ npm run typecheck
 npm run build
 ```
 
+## Contributing
+
+This is a **vibe coding friendly** project — feel free to experiment, explore ideas, and contribute in whatever way feels natural to you.
+
+### Code Review
+
+All PRs are reviewed by assigned **architecture reviewers** who ensure consistency with the project's architectural decisions and code quality standards.
+
 ## License
 
 MIT

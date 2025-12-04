@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { ColorProvider } from '@/lib/colorContext';
 
 export const metadata: Metadata = {
   title: 'EzReport Web Console',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className="bg-black min-h-screen font-mono">
-        {children}
+        <ColorProvider>
+          {children}
+        </ColorProvider>
       </body>
     </html>
   );

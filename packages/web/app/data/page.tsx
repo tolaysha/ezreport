@@ -15,6 +15,7 @@ import {
   Breadcrumb,
 } from '@/components/console';
 import { SprintCard, VersionCard, AnalysisPanel, ExpertRole, ExpertAnalysisResult } from '@/components/sprint';
+import { useColor } from '@/lib/colorContext';
 
 
 // =============================================================================
@@ -76,6 +77,7 @@ interface HistoryEntry {
 
 export default function DataPage() {
   const router = useRouter();
+  const { colorScheme } = useColor();
   const [collectResponse, setCollectResponse] = useState<CollectDataResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<StrategicAnalysis | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -239,7 +241,7 @@ export default function DataPage() {
 
   return (
     <div 
-      className="min-h-screen bg-black p-4 md:p-8"
+      className={`min-h-screen ${colorScheme.bg} p-4 md:p-8`}
       onClick={() => inputRef.current?.focus()}
     >
       <div className="max-w-6xl mx-auto">
@@ -261,14 +263,14 @@ export default function DataPage() {
           {/* Terminal output area */}
           <div 
             ref={terminalRef}
-            className="bg-black/50 border border-green-500/30 p-4 font-mono text-sm"
+            className={`bg-black/50 border ${colorScheme.border}/30 p-4 font-mono text-sm`}
           >
             {/* Welcome message */}
-            <div className="text-green-500/70 mb-2">
+            <div className={`${colorScheme.primary} opacity-70 mb-2`}>
               ezreport data collector v1.0
             </div>
-            <div className="text-green-500/50 mb-4">
-              Введите <span className="text-green-400">start {'<board_id>'}</span> для загрузки данных
+            <div className={`${colorScheme.primary} opacity-50 mb-4`}>
+              Введите <span className={colorScheme.secondary}>start {'<board_id>'}</span> для загрузки данных
             </div>
             
             {/* History */}
@@ -276,14 +278,14 @@ export default function DataPage() {
               <div key={idx} className="mb-2">
                 {entry.command && (
                   <div className="flex items-center gap-2">
-                    <span className="text-green-500">{'>'}</span>
-                    <span className="text-green-400">{entry.command}</span>
+                    <span className={colorScheme.primary}>{'>'}</span>
+                    <span className={colorScheme.secondary}>{entry.command}</span>
                   </div>
                 )}
                 <div className={`whitespace-pre-wrap pl-4 ${
                   entry.type === 'error' ? 'text-red-400' :
-                  entry.type === 'success' ? 'text-green-400' :
-                  'text-green-500/70'
+                  entry.type === 'success' ? colorScheme.secondary :
+                  `${colorScheme.primary} opacity-70`
                 }`}>
                   {entry.response}
                 </div>
@@ -292,7 +294,7 @@ export default function DataPage() {
             
             {/* Loading indicator in terminal */}
             {(isRunning || isAnalyzing) && (
-              <div className="flex items-center gap-2 text-green-500 animate-pulse">
+              <div className={`flex items-center gap-2 ${colorScheme.primary} animate-pulse`}>
                 <span className="animate-spin">◌</span>
                 <span>{isAnalyzing ? 'AI анализ...' : 'Загрузка...'}</span>
               </div>
@@ -300,7 +302,7 @@ export default function DataPage() {
             
             {/* Input line */}
             <div className="flex items-center gap-2 mt-4">
-              <span className="text-green-500">{'>'}</span>
+              <span className={colorScheme.primary}>{'>'}</span>
               <div className="relative flex-1">
                 <input
                   ref={inputRef}
@@ -308,7 +310,7 @@ export default function DataPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="w-full bg-transparent outline-none caret-transparent text-green-400"
+                  className={`w-full bg-transparent outline-none caret-transparent ${colorScheme.secondary}`}
                   autoComplete="off"
                   spellCheck={false}
                   disabled={isRunning || isAnalyzing}
@@ -316,7 +318,7 @@ export default function DataPage() {
                 />
                 {/* Block cursor */}
                 <span 
-                  className={`absolute top-0 text-green-500 ${showCursor && !isRunning && !isAnalyzing ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute top-0 ${colorScheme.primary} ${showCursor && !isRunning && !isAnalyzing ? 'opacity-100' : 'opacity-0'}`}
                   style={{ left: `${input.length}ch` }}
                 >
                   █
@@ -325,7 +327,7 @@ export default function DataPage() {
             </div>
             
             {/* Hint */}
-            <div className="mt-3 text-green-500/40 text-xs">
+            <div className={`mt-3 ${colorScheme.primary} opacity-40 text-xs`}>
               Команды: start {'<board_id>'} | analyze | help | clear
             </div>
           </div>
@@ -338,19 +340,19 @@ export default function DataPage() {
           </div>
 
           {!collectResponse ? (
-            <div className="text-green-500/50 font-mono text-sm">
+            <div className={`${colorScheme.primary} opacity-50 font-mono text-sm`}>
               [ Выполните команду start {'<board_id>'} для загрузки данных ]
             </div>
           ) : basicBoardData ? (
             <div className="space-y-6">
               {/* Project Info */}
               {basicBoardData.projectName && (
-                <div className="flex items-center gap-3 pb-3 border-b border-green-500/30">
-                  <span className="text-green-400 font-mono text-lg font-bold">
+                <div className={`flex items-center gap-3 pb-3 border-b ${colorScheme.border}/30`}>
+                  <span className={`${colorScheme.secondary} font-mono text-lg font-bold`}>
                     {basicBoardData.projectName}
                   </span>
                   {basicBoardData.projectKey && (
-                    <span className="text-green-500/50 font-mono text-sm">
+                    <span className={`${colorScheme.primary} opacity-50 font-mono text-sm`}>
                       ({basicBoardData.projectKey})
                     </span>
                   )}
@@ -391,7 +393,7 @@ export default function DataPage() {
               </div>
 
               {/* Availability Info */}
-              <div className="text-green-500/50 font-mono text-xs">
+              <div className={`${colorScheme.primary} opacity-50 font-mono text-xs`}>
                 Доступность: Previous={basicBoardData.availability.hasPreviousSprint ? '✓' : '✗'},
                 Current={basicBoardData.availability.hasCurrentSprint ? '✓' : '✗'}
               </div>
@@ -441,7 +443,7 @@ export default function DataPage() {
               className="text-4xl md:text-6xl font-bold tracking-tight cursor-pointer transition-all duration-300 hover:scale-105 group"
             >
               <span className="text-zinc-600 group-hover:text-zinc-500 transition-colors">make </span>
-              <span className="text-green-800 group-hover:text-green-600 transition-colors">ez</span>
+              <span className={`${colorScheme.primary.replace('-500', '-800')} group-hover:${colorScheme.primary.replace('-500', '-600')} transition-colors`}>ez</span>
               <span className="text-zinc-700 group-hover:text-zinc-500 transition-colors">report</span>
             </button>
           </div>

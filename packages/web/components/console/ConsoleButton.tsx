@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { useColor } from '@/lib/colorContext';
 
 interface ConsoleButtonProps {
   children: ReactNode;
@@ -19,11 +20,12 @@ export function ConsoleButton({
   className = '',
   type = 'button',
 }: ConsoleButtonProps) {
-  const baseClasses =
-    'border border-green-500 px-4 py-3 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  const { colorScheme } = useColor();
+  const baseClasses = `border ${colorScheme.border} px-4 py-3 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed`;
+  
   const variantClasses = {
-    primary: 'text-green-500 hover:bg-green-500 hover:text-black',
-    secondary: 'text-green-500/70 hover:bg-green-500/20 hover:text-green-400',
+    primary: `${colorScheme.primary} hover:${colorScheme.accent} hover:text-black`,
+    secondary: `${colorScheme.primary} opacity-70 hover:${colorScheme.accent}/20 hover:${colorScheme.secondary}`,
   };
 
   return (
@@ -37,5 +39,3 @@ export function ConsoleButton({
     </button>
   );
 }
-
-

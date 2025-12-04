@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { ping } from '@/lib/apiClient';
+import { useColor } from '@/lib/colorContext';
 
 export function BackendStatus() {
+  const { colorScheme } = useColor();
   const [status, setStatus] = useState<'online' | 'offline' | 'checking'>(
     'checking'
   );
@@ -20,7 +22,7 @@ export function BackendStatus() {
   }, []);
 
   return (
-    <div className="text-green-500 font-mono text-sm mb-2">
+    <div className={`${colorScheme.primary} font-mono text-sm mb-2`}>
       {status === 'checking' && '[BACKEND: CHECKING...]'}
       {status === 'online' && '[BACKEND: ONLINE]'}
       {status === 'offline' && (
@@ -29,5 +31,3 @@ export function BackendStatus() {
     </div>
   );
 }
-
-

@@ -6,6 +6,7 @@ import {
   Breadcrumb,
 } from '@/components/console';
 import { generatePartnerReport } from '@/lib/apiClient';
+import { useColor } from '@/lib/colorContext';
 
 const TEMPLATE_SECTIONS = [
   { icon: '🚀', label: 'version info' },
@@ -107,62 +108,67 @@ function parseReportSections(markdown: string): ReportSection[] {
   return sections;
 }
 
-function formatContent(content: string): React.ReactNode {
+function FormatContent({ content, colorScheme }: { content: string; colorScheme: { primary: string; secondary: string; border: string; accent: string } }) {
   const lines = content.split('\n');
   
-  return lines.map((line, idx) => {
-    // Bold text
-    const boldMatch = line.match(/\*\*(.+?)\*\*/g);
-    let formattedLine: React.ReactNode = line;
-    
-    if (boldMatch) {
-      const parts = line.split(/(\*\*.+?\*\*)/);
-      formattedLine = parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={i} className="text-green-400">{part.slice(2, -2)}</strong>;
+  return (
+    <>
+      {lines.map((line, idx) => {
+        // Bold text
+        const boldMatch = line.match(/\*\*(.+?)\*\*/g);
+        let formattedLine: React.ReactNode = line;
+        
+        if (boldMatch) {
+          const parts = line.split(/(\*\*.+?\*\*)/);
+          formattedLine = parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={i} className={colorScheme.secondary}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          });
         }
-        return part;
-      });
-    }
 
-    // List items
-    if (line.trim().startsWith('- ')) {
-      return (
-        <div key={idx} className="flex gap-2 my-1">
-          <span className="text-green-600">→</span>
-          <span>{typeof formattedLine === 'string' ? formattedLine.slice(2) : formattedLine}</span>
-        </div>
-      );
-    }
+        // List items
+        if (line.trim().startsWith('- ')) {
+          return (
+            <div key={idx} className="flex gap-2 my-1">
+              <span className={`${colorScheme.primary} opacity-60`}>→</span>
+              <span>{typeof formattedLine === 'string' ? formattedLine.slice(2) : formattedLine}</span>
+            </div>
+          );
+        }
 
-    // Links
-    const linkMatch = line.match(/\[(.+?)\]\((.+?)\)/);
-    if (linkMatch) {
-      const [, text, url] = linkMatch;
-      return (
-        <div key={idx} className="my-1">
-          <a 
-            href={url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
-          >
-            {text}
-          </a>
-        </div>
-      );
-    }
+        // Links
+        const linkMatch = line.match(/\[(.+?)\]\((.+?)\)/);
+        if (linkMatch) {
+          const [, text, url] = linkMatch;
+          return (
+            <div key={idx} className="my-1">
+              <a 
+                href={url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
+              >
+                {text}
+              </a>
+            </div>
+          );
+        }
 
-    // Empty lines
-    if (!line.trim()) {
-      return <div key={idx} className="h-2" />;
-    }
+        // Empty lines
+        if (!line.trim()) {
+          return <div key={idx} className="h-2" />;
+        }
 
-    return <div key={idx} className="my-1">{formattedLine}</div>;
-  });
+        return <div key={idx} className="my-1">{formattedLine}</div>;
+      })}
+    </>
+  );
 }
 
 function StyledReport({ markdown }: { markdown: string }) {
+  const { colorScheme } = useColor();
   const sections = useMemo(() => parseReportSections(markdown), [markdown]);
 
   // Extract main title from markdown
@@ -172,13 +178,13 @@ function StyledReport({ markdown }: { markdown: string }) {
   return (
     <div className="mb-12 space-y-4">
       {/* Report Header */}
-      <div className="border border-green-500/30 bg-gradient-to-b from-green-950/30 to-transparent rounded-lg p-6 backdrop-blur">
+      <div className={`border ${colorScheme.border}/30 bg-gradient-to-b from-${colorScheme.accent.replace('bg-', '')}/30 to-transparent rounded-lg p-6 backdrop-blur`}>
         <div className="flex items-center gap-3 mb-2">
           <span className="text-2xl">✅</span>
-          <h2 className="text-xl font-bold text-green-400 font-mono">{mainTitle}</h2>
+          <h2 className={`text-xl font-bold ${colorScheme.secondary} font-mono`}>{mainTitle}</h2>
         </div>
-        <div className="flex items-center gap-2 text-xs text-green-500/50 font-mono">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        <div className={`flex items-center gap-2 text-xs ${colorScheme.primary} opacity-50 font-mono`}>
+          <span className={`w-2 h-2 rounded-full ${colorScheme.accent} animate-pulse`} />
           <span>сгенерировано</span>
           <span>•</span>
           <span>{new Date().toLocaleDateString('ru-RU')}</span>
@@ -190,20 +196,20 @@ function StyledReport({ markdown }: { markdown: string }) {
         {sections.map((section, idx) => (
           <div
             key={idx}
-            className="border border-green-500/20 bg-gradient-to-br from-green-950/20 via-black to-transparent rounded-lg overflow-hidden transition-all hover:border-green-500/40"
+            className={`border ${colorScheme.border}/20 bg-gradient-to-br from-${colorScheme.accent.replace('bg-', '')}/20 via-black to-transparent rounded-lg overflow-hidden transition-all hover:${colorScheme.border}/40`}
           >
             {/* Section Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-green-500/5 border-b border-green-500/10">
+            <div className={`flex items-center gap-3 px-4 py-3 ${colorScheme.accent}/5 border-b ${colorScheme.border}/10`}>
               <span className="text-lg">{section.icon}</span>
-              <h3 className="text-sm font-semibold text-green-400 font-mono uppercase tracking-wide">
+              <h3 className={`text-sm font-semibold ${colorScheme.secondary} font-mono uppercase tracking-wide`}>
                 {section.title}
               </h3>
             </div>
             
             {/* Section Content */}
-            <div className="px-4 py-4 font-mono text-sm text-green-500/80 leading-relaxed">
-              {section.content ? formatContent(section.content) : (
-                <span className="text-green-500/40 italic">Нет данных</span>
+            <div className={`px-4 py-4 font-mono text-sm ${colorScheme.primary} opacity-80 leading-relaxed`}>
+              {section.content ? <FormatContent content={section.content} colorScheme={colorScheme} /> : (
+                <span className={`${colorScheme.primary} opacity-40 italic`}>Нет данных</span>
               )}
             </div>
           </div>
@@ -216,7 +222,7 @@ function StyledReport({ markdown }: { markdown: string }) {
           onClick={() => {
             navigator.clipboard.writeText(markdown);
           }}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-mono text-green-500/60 border border-green-500/20 rounded hover:border-green-500/40 hover:text-green-500/80 hover:bg-green-500/5 transition-all"
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-mono ${colorScheme.primary} opacity-60 border ${colorScheme.border}/20 rounded hover:${colorScheme.border}/40 hover:opacity-80 hover:${colorScheme.accent}/5 transition-all`}
         >
           <span>📋</span>
           <span>копировать markdown</span>
@@ -227,6 +233,7 @@ function StyledReport({ markdown }: { markdown: string }) {
 }
 
 export default function ReportPage() {
+  const { colorScheme } = useColor();
   const [report, setReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +280,7 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-8">
+    <div className={`min-h-screen ${colorScheme.bg} p-4 md:p-8`}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -296,14 +303,14 @@ export default function ReportPage() {
         ) : (
           <div className="mb-12">
             {/* Compact Template Preview */}
-            <div className="border border-green-500/20 bg-gradient-to-b from-green-950/20 to-transparent rounded-lg p-4 backdrop-blur">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-500/10">
-                <span className="text-green-500/60 text-xs font-mono">template.md</span>
+            <div className={`border ${colorScheme.border}/20 bg-gradient-to-b from-${colorScheme.accent.replace('bg-', '')}/20 to-transparent rounded-lg p-4 backdrop-blur`}>
+              <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${colorScheme.border}/10`}>
+                <span className={`${colorScheme.primary} opacity-60 text-xs font-mono`}>template.md</span>
                 <div className="flex-1" />
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500/30" />
-                  <span className="w-2 h-2 rounded-full bg-green-500/20" />
-                  <span className="w-2 h-2 rounded-full bg-green-500/10" />
+                  <span className={`w-2 h-2 rounded-full ${colorScheme.accent} opacity-30`} />
+                  <span className={`w-2 h-2 rounded-full ${colorScheme.accent} opacity-20`} />
+                  <span className={`w-2 h-2 rounded-full ${colorScheme.accent} opacity-10`} />
                 </div>
               </div>
               
@@ -311,12 +318,12 @@ export default function ReportPage() {
                 {TEMPLATE_SECTIONS.map((section, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col items-center justify-center p-3 rounded bg-green-500/5 border border-green-500/10 hover:border-green-500/30 hover:bg-green-500/10 transition-all cursor-default group"
+                    className={`flex flex-col items-center justify-center p-3 rounded ${colorScheme.accent}/5 border ${colorScheme.border}/10 hover:${colorScheme.border}/30 hover:${colorScheme.accent}/10 transition-all cursor-default group`}
                   >
                     <span className="text-lg mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
                       {section.icon}
                     </span>
-                    <span className="text-[10px] font-mono text-green-500/50 group-hover:text-green-500/80 transition-colors text-center leading-tight">
+                    <span className={`text-[10px] font-mono ${colorScheme.primary} opacity-50 group-hover:opacity-80 transition-colors text-center leading-tight`}>
                       {section.label}
                     </span>
                   </div>
@@ -341,7 +348,7 @@ export default function ReportPage() {
               </>
             ) : (
               <>
-                <span className="text-green-800 group-hover:text-green-600 transition-colors">ez</span>
+                <span className={`${colorScheme.primary.replace('-500', '-800')} group-hover:${colorScheme.primary.replace('-500', '-600')} transition-colors`}>ez</span>
                 <span className="text-zinc-700 group-hover:text-zinc-500 transition-colors">report</span>
               </>
             )}

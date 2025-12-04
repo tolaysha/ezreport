@@ -1,5 +1,7 @@
 'use client';
 
+import { useColor } from '@/lib/colorContext';
+
 interface ConsoleInputProps {
   label: string;
   value: string;
@@ -19,12 +21,12 @@ export function ConsoleInput({
   type = 'text',
   className = '',
 }: ConsoleInputProps) {
-  const inputClasses =
-    'w-full bg-black border border-green-500 text-green-500 px-3 py-2 font-mono focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50';
+  const { colorScheme } = useColor();
+  const inputClasses = `w-full bg-black border ${colorScheme.border} ${colorScheme.primary} px-3 py-2 font-mono focus:outline-none focus:ring-1 focus:${colorScheme.border} disabled:opacity-50`;
 
   return (
     <div className={className}>
-      <label className="block text-green-500 font-mono text-sm mb-1">
+      <label className={`block ${colorScheme.primary} font-mono text-sm mb-1`}>
         {label}
       </label>
       {type === 'textarea' ? (
@@ -48,5 +50,3 @@ export function ConsoleInput({
     </div>
   );
 }
-
-

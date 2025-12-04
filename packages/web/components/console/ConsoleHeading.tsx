@@ -1,5 +1,7 @@
 'use client';
 
+import { useColor } from '@/lib/colorContext';
+
 interface ConsoleHeadingProps {
   children: React.ReactNode;
   level?: 1 | 2 | 3;
@@ -11,7 +13,8 @@ export function ConsoleHeading({
   level = 2,
   className = '',
 }: ConsoleHeadingProps) {
-  const baseClasses = 'text-green-500 font-mono';
+  const { colorScheme } = useColor();
+  const baseClasses = `${colorScheme.primary} font-mono`;
   const sizeClasses = {
     1: 'text-2xl md:text-3xl',
     2: 'text-xl',
@@ -26,5 +29,3 @@ export function ConsoleHeading({
     </Tag>
   );
 }
-
-

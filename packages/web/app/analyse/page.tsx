@@ -10,6 +10,7 @@ import {
   ConsoleButton,
   ConsoleInput,
 } from '@/components/console';
+import { useColor } from '@/lib/colorContext';
 
 // =============================================================================
 // Report Structure Definition
@@ -57,6 +58,7 @@ const REPORT_STRUCTURE: StructureItem[] = [
 // =============================================================================
 
 export default function AnalysePage() {
+  const { colorScheme } = useColor();
   const [response, setResponse] = useState<GenerateReportResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,31 +86,31 @@ export default function AnalysePage() {
   const report = response?.report;
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-8">
+    <div className={`min-h-screen ${colorScheme.bg} p-4 md:p-8`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 border-b border-green-500 pb-4">
+        <div className={`mb-8 border-b ${colorScheme.border} pb-4`}>
           <div className="flex items-center gap-2 mb-2">
             <Link
-              href="/"
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
+              href="/menu"
+              className={`${colorScheme.primary} font-mono text-sm hover:${colorScheme.secondary} transition-colors`}
             >
               [HOME]
             </Link>
-            <span className="text-green-500/50">/</span>
+            <span className={`${colorScheme.primary} opacity-50`}>/</span>
             <Link
               href="/data"
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
+              className={`${colorScheme.primary} font-mono text-sm hover:${colorScheme.secondary} transition-colors`}
             >
               Data
             </Link>
-            <span className="text-green-500/50">/</span>
-            <span className="text-green-500 font-mono text-sm">Analyse</span>
+            <span className={`${colorScheme.primary} opacity-50`}>/</span>
+            <span className={`${colorScheme.primary} font-mono text-sm`}>Analyse</span>
           </div>
           <ConsoleHeading level={1} className="mb-2">
             [ANALYSE] Генерация отчёта
           </ConsoleHeading>
-          <p className="text-green-500 font-mono text-sm opacity-80">
+          <p className={`${colorScheme.primary} font-mono text-sm opacity-80`}>
             Генерация полного отчёта по данным спринта
           </p>
         </div>
@@ -132,7 +134,7 @@ export default function AnalysePage() {
             {isRunning ? '[ GENERATING... ]' : '[GENERATE REPORT]'}
           </ConsoleButton>
           {response && (
-            <span className="text-green-500/70 font-mono text-sm">
+            <span className={`${colorScheme.primary} opacity-70 font-mono text-sm`}>
               ✓ Отчёт сгенерирован
             </span>
           )}
@@ -152,12 +154,12 @@ export default function AnalysePage() {
                   key={item.id}
                   className={`font-mono text-sm ${
                     item.level === 0
-                      ? 'text-green-400 font-bold mt-3 first:mt-0'
-                      : 'text-green-500/70 pl-4'
+                      ? `${colorScheme.secondary} font-bold mt-3 first:mt-0`
+                      : `${colorScheme.primary} opacity-70 pl-4`
                   }`}
                 >
                   {item.level === 1 && (
-                    <span className="text-green-500/40 mr-2">└─</span>
+                    <span className={`${colorScheme.primary} opacity-40 mr-2`}>└─</span>
                   )}
                   {item.label}
                 </div>
@@ -172,7 +174,7 @@ export default function AnalysePage() {
             </ConsoleHeading>
 
             {!report ? (
-              <div className="text-green-500/50 font-mono text-sm">
+              <div className={`${colorScheme.primary} opacity-50 font-mono text-sm`}>
                 [ Нажмите GENERATE REPORT для генерации ]
               </div>
             ) : !report.sprint && !report.overview ? (
@@ -193,41 +195,41 @@ export default function AnalysePage() {
             ) : (
               <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                 {/* Version Callout */}
-                <div className="border border-green-500/50 p-3 bg-green-500/5">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/50 p-3 ${colorScheme.accent}/5`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     🚀 VERSION CALLOUT
                   </div>
-                  <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} whitespace-pre-wrap`}>
                     {report.version ? `Version ${report.version.number} — ${report.version.goal}` : '—'}
                   </pre>
                 </div>
 
                 {/* Sprint Callout */}
-                <div className="border border-green-500/50 p-3 bg-green-500/5">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/50 p-3 ${colorScheme.accent}/5`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     ✅ SPRINT CALLOUT
                   </div>
-                  <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} whitespace-pre-wrap`}>
                     {report.sprint ? `Sprint ${report.sprint.number}: ${report.sprint.goal} (${report.sprint.progressPercent}%)` : '—'}
                   </pre>
                 </div>
 
                 {/* Overview */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     3.2 OVERVIEW
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.overview || '—'}
                   </pre>
                 </div>
 
                 {/* Achievements */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     3.3 ACHIEVEMENTS
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.achievements?.length > 0 
                       ? report.achievements.map(a => `• ${a.title}: ${a.description}`).join('\n')
                       : '—'}
@@ -235,11 +237,11 @@ export default function AnalysePage() {
                 </div>
 
                 {/* Not Done */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     3.4 NOT DONE
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.notDone?.length > 0 
                       ? report.notDone.map(n => `• ${n.title}: ${n.reason}`).join('\n')
                       : 'Всё запланированное реализовано.'}
@@ -247,11 +249,11 @@ export default function AnalysePage() {
                 </div>
 
                 {/* Artifacts */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     4. ARTIFACTS
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.artifacts?.length > 0 
                       ? report.artifacts.map(a => `• ${a.title}: ${a.description}`).join('\n')
                       : 'Нет артефактов.'}
@@ -259,21 +261,21 @@ export default function AnalysePage() {
                 </div>
 
                 {/* Next Sprint */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     5. NEXT SPRINT
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.nextSprint ? `Sprint ${report.nextSprint.sprintNumber}: ${report.nextSprint.goal}` : '—'}
                   </pre>
                 </div>
 
                 {/* Blockers */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     5.3 BLOCKERS
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.blockers?.length > 0 
                       ? report.blockers.map(b => `• ${b.title}: ${b.description}`).join('\n')
                       : 'Нет'}
@@ -281,11 +283,11 @@ export default function AnalysePage() {
                 </div>
 
                 {/* PM Questions */}
-                <div className="border border-green-500/30 p-3">
-                  <div className="text-green-400 font-mono text-xs mb-1">
+                <div className={`border ${colorScheme.border}/30 p-3`}>
+                  <div className={`${colorScheme.secondary} font-mono text-xs mb-1`}>
                     6. PM QUESTIONS
                   </div>
-                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                  <pre className={`font-mono text-xs ${colorScheme.primary} opacity-90 whitespace-pre-wrap`}>
                     {report.pmQuestions?.length > 0 
                       ? report.pmQuestions.map(q => `• ${q.title}: ${q.description}`).join('\n')
                       : 'Нет'}
@@ -303,13 +305,13 @@ export default function AnalysePage() {
             className={`inline-block border text-lg px-8 py-4 font-mono transition-colors ${
               report
                 ? 'border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]'
-                : 'border-green-500/50 text-green-500/50 cursor-default'
+                : `${colorScheme.border}/50 ${colorScheme.primary} opacity-50 cursor-default`
             }`}
           >
             [NEXT] Перейти к финальному отчёту →
           </Link>
           {!report && (
-            <div className="text-green-500/40 font-mono text-xs mt-2">
+            <div className={`${colorScheme.primary} opacity-40 font-mono text-xs mt-2`}>
               Сначала сгенерируйте отчёт
             </div>
           )}
@@ -318,4 +320,3 @@ export default function AnalysePage() {
     </div>
   );
 }
-
