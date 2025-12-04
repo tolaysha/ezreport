@@ -125,3 +125,37 @@ export async function analyzeData(
 
   return response.json();
 }
+
+/**
+ * Generate partner report from collected data
+ */
+export async function generatePartnerReport(
+  collectedData: unknown
+): Promise<{ report: string; notionUrl?: string }> {
+  // Extract sprint name from collected data for the request
+  const data = collectedData as { basicBoardData?: { currentSprint?: { sprint: { name: string } } } };
+  const sprintName = data?.basicBoardData?.currentSprint?.sprint?.name;
+
+  const response = await fetch(`${API_BASE_URL}/api/generate-report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sprintName,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`
+    );
+  }
+
+  const result: GenerateReportResponse = await response.json();
+  return {
+    report: result.report || '',
+    notionUrl: result.notionPage?.url,
+  };
+}
