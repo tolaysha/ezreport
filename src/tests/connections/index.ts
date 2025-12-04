@@ -8,6 +8,7 @@
 import { logger } from '../../utils/logger';
 
 import { testJiraConnection, type JiraConnectionTestResult } from './jira.test';
+import { testJiraDataFetch, listJiraBoards, type JiraDataTestResult } from './jira-data.test';
 import { testNotionConnection, type NotionConnectionTestResult } from './notion.test';
 import { testOpenAIConnection, type OpenAIConnectionTestResult } from './openai.test';
 
@@ -17,6 +18,7 @@ import { testOpenAIConnection, type OpenAIConnectionTestResult } from './openai.
 
 export type ConnectionTestResult =
   | JiraConnectionTestResult
+  | JiraDataTestResult
   | NotionConnectionTestResult
   | OpenAIConnectionTestResult;
 
@@ -116,6 +118,32 @@ function printResult(result: ConnectionTestResult): void {
         `${details.serverInfo.version} (${details.serverInfo.deploymentType})`,
       );
     }
+    if ('boardId' in details && details.boardId) {
+      printDetail('Board ID', details.boardId);
+    }
+    if ('boardName' in details && details.boardName) {
+      printDetail('Доска', details.boardName);
+    }
+    if ('lastClosedSprint' in details && details.lastClosedSprint) {
+      const sprint = details.lastClosedSprint;
+      console.log();
+      console.log(`  ${COLORS.bright}✓ Прошлый спринт: ${sprint.name}${COLORS.reset} (ID: ${sprint.id}, задач: ${sprint.issuesCount})`);
+      if (sprint.issues && sprint.issues.length > 0) {
+        for (const issue of sprint.issues) {
+          console.log(`    ${COLORS.dim}${issue.key}${COLORS.reset} [${issue.status}] ${issue.summary}`);
+        }
+      }
+    }
+    if ('activeSprint' in details && details.activeSprint) {
+      const sprint = details.activeSprint;
+      console.log();
+      console.log(`  ${COLORS.bright}▶ Текущий спринт: ${sprint.name}${COLORS.reset} (ID: ${sprint.id}, задач: ${sprint.issuesCount})`);
+      if (sprint.issues && sprint.issues.length > 0) {
+        for (const issue of sprint.issues) {
+          console.log(`    ${COLORS.dim}${issue.key}${COLORS.reset} [${issue.status}] ${issue.summary}`);
+        }
+      }
+    }
     if ('parentPageId' in details && details.parentPageId) {
       printDetail('Parent Page ID', details.parentPageId);
     }
@@ -144,11 +172,13 @@ function printResult(result: ConnectionTestResult): void {
  * Запускает тест соединения для указанного сервиса.
  */
 export async function runConnectionTest(
-  service: 'jira' | 'notion' | 'openai',
+  service: 'jira' | 'jira-data' | 'notion' | 'openai',
 ): Promise<ConnectionTestResult> {
   switch (service) {
     case 'jira':
       return testJiraConnection();
+    case 'jira-data':
+      return testJiraDataFetch();
     case 'notion':
       return testNotionConnection();
     case 'openai':
@@ -211,11 +241,20 @@ export async function runAllConnectionTests(): Promise<ConnectionTestsReport> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
+  // Специальная команда: список досок Jira
+  if (args.includes('--jira-boards') || args.includes('--boards')) {
+    await runJiraBoardsList();
+    return;
+  }
+
   // Определяем какие тесты запускать
-  const services: Array<'jira' | 'notion' | 'openai'> = [];
+  const services: Array<'jira' | 'jira-data' | 'notion' | 'openai'> = [];
 
   if (args.includes('--jira') || args.includes('-j')) {
     services.push('jira');
+  }
+  if (args.includes('--jira-data') || args.includes('-jd')) {
+    services.push('jira-data');
   }
   if (args.includes('--notion') || args.includes('-n')) {
     services.push('notion');
@@ -249,6 +288,37 @@ async function main(): Promise<void> {
   process.exit(failed > 0 ? 1 : 0);
 }
 
+/**
+ * Выводит список всех досок Jira.
+ */
+async function runJiraBoardsList(): Promise<void> {
+  printHeader('СПИСОК ДОСОК JIRA');
+
+  const result = await listJiraBoards();
+
+  if (!result.success) {
+    printError(`Не удалось получить список досок: ${result.error}`);
+    process.exit(1);
+  }
+
+  if (!result.boards || result.boards.length === 0) {
+    console.log('  Доски не найдены');
+    return;
+  }
+
+  console.log(`  Найдено досок: ${result.boards.length}\n`);
+  console.log('  ID     | Тип      | Название');
+  console.log('  ' + '─'.repeat(50));
+
+  for (const board of result.boards) {
+    const id = String(board.id).padEnd(6);
+    const type = board.type.padEnd(8);
+    console.log(`  ${id} | ${type} | ${board.name}`);
+  }
+
+  console.log();
+}
+
 // Запуск при прямом вызове
 if (require.main === module) {
   main().catch((error) => {
@@ -259,6 +329,7 @@ if (require.main === module) {
 
 // Экспорты
 export { testJiraConnection } from './jira.test';
+export { testJiraDataFetch, listJiraBoards } from './jira-data.test';
 export { testNotionConnection } from './notion.test';
 export { testOpenAIConnection } from './openai.test';
 
