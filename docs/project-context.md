@@ -72,3 +72,15 @@ When using AI (Cursor / LLMs) to modify this repo:
 - **Type safety**: Functions like `toSprintIssue()` convert raw API types (e.g., `ParsedJiraIssue`) to domain types (`SprintIssue`). Never call conversion functions on already-converted domain objects.
 
 This document is the single source of truth for the project context and should be kept up to date when the overall purpose or architecture of the tool changes.
+
+## 7. Workflow for AI-powered Sprint Report Generation
+
+The sprint report generation follows a three-stage workflow implemented in `src/services/sprintReportWorkflow.ts`:
+
+1. **Data Collection & Validation** — Fetches sprint data from Jira, converts to domain types (`SprintInfo`, `SprintIssue`), validates required fields, and uses AI to assess how well the sprint issues match the declared sprint goal (`goalIssueMatchLevel`).
+
+2. **Block-by-block Report Generation** — Each section of `SprintReportStructured` is generated via a separate AI prompt. Prompt builders are located in `src/ai/prompts/sprintReportPrompts.ts`. This allows fine-grained control over each report block (version, sprint, overview, notDone, achievements, artifacts, nextSprint, blockers, pmQuestions).
+
+3. **Final Report Validation** — Checks structure completeness, Russian language presence, placeholder detection, data consistency (sprint numbers, dates, progress), and uses AI for partner-readiness assessment.
+
+The workflow is orchestrated by `runSprintReportWorkflow()` which stops early if validation fails at any stage. The CLI defaults to this workflow; use `--legacy` flag for the old single-prompt pipeline.
