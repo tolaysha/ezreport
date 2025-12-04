@@ -113,13 +113,14 @@ app.post('/api/collect-data', async (req: Request, res: Response) => {
     addLog(`Current sprint: ${basicBoardData.availability.hasCurrentSprint ? 'found' : 'not found'}`);
     addLog('Data collection complete');
 
+    // Return previousSprint in the 'sprint' field since report is generated for completed sprints
     const response: CollectDataResponse = {
-      sprint: basicBoardData.currentSprint ? {
-        id: basicBoardData.currentSprint.sprint.id,
-        name: basicBoardData.currentSprint.sprint.name,
-        goal: basicBoardData.currentSprint.sprint.goal,
-        startDate: basicBoardData.currentSprint.sprint.startDate,
-        endDate: basicBoardData.currentSprint.sprint.endDate,
+      sprint: basicBoardData.previousSprint ? {
+        id: basicBoardData.previousSprint.sprint.id,
+        name: basicBoardData.previousSprint.sprint.name,
+        goal: basicBoardData.previousSprint.sprint.goal,
+        startDate: basicBoardData.previousSprint.sprint.startDate,
+        endDate: basicBoardData.previousSprint.sprint.endDate,
       } : undefined,
       basicBoardData,
       dataValidation: null,
@@ -160,15 +161,15 @@ app.post('/api/generate-report', async (req: Request, res: Response) => {
       return;
     }
 
-    if (!state.basicBoardData.currentSprint) {
+    if (!state.basicBoardData.previousSprint) {
       res.status(400).json({ 
-        error: 'No current sprint found in collected data.',
+        error: 'No previous sprint found in collected data. Report is generated for completed sprints.',
         logs: [...logs],
       });
       return;
     }
 
-    addLog(`Sprint: ${state.basicBoardData.currentSprint.sprint.name}`);
+    addLog(`Sprint: ${state.basicBoardData.previousSprint.sprint.name}`);
     addLog(`Analysis: ${state.analysis ? 'available' : 'not available'}`);
 
     // Generate report markdown using state data
@@ -181,11 +182,11 @@ app.post('/api/generate-report', async (req: Request, res: Response) => {
 
     const response: GenerateReportResponse = {
       sprint: {
-        id: String(state.basicBoardData.currentSprint.sprint.id),
-        name: state.basicBoardData.currentSprint.sprint.name,
-        goal: state.basicBoardData.currentSprint.sprint.goal,
-        startDate: state.basicBoardData.currentSprint.sprint.startDate,
-        endDate: state.basicBoardData.currentSprint.sprint.endDate,
+        id: String(state.basicBoardData.previousSprint.sprint.id),
+        name: state.basicBoardData.previousSprint.sprint.name,
+        goal: state.basicBoardData.previousSprint.sprint.goal,
+        startDate: state.basicBoardData.previousSprint.sprint.startDate,
+        endDate: state.basicBoardData.previousSprint.sprint.endDate,
       },
       reportMarkdown,
       logs: [...logs],

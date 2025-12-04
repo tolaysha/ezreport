@@ -56,7 +56,7 @@ function calculateProgressPercent(issues: SprintIssue[]): number {
 // Report Generation
 // =============================================================================
 
-const SYSTEM_PROMPT = `Ты — AI, который генерирует партнёрские отчёты о спринтах.
+const SYSTEM_PROMPT = `Ты — AI, который генерирует отчёты о завершённых спринтах.
 
 ТВОЯ ЗАДАЧА:
 - Сгенерировать markdown-документ отчёта по предоставленным данным.
@@ -70,7 +70,7 @@ const SYSTEM_PROMPT = `Ты — AI, который генерирует парт
 - Если чего-то нет — явно писать «Нет» или «Не было».
 
 СТРУКТУРА ОТЧЁТА:
-1. Заголовок с номером спринта
+1. Заголовок: "# ✅ Sprint N" (где N — номер спринта, без дополнительного текста)
 2. Информация о версии (если есть)
 3. Информация о спринте (даты, цель, прогресс)
 4. Overview спринта
@@ -84,9 +84,10 @@ const SYSTEM_PROMPT = `Ты — AI, который генерирует парт
 Верни только markdown-документ без дополнительных комментариев.`;
 
 function buildMockReport(data: PartnerReportInput): string {
-  const sprint = data.basicBoardData?.currentSprint;
+  // Use previous sprint (completed) for the report, not current sprint
+  const sprint = data.basicBoardData?.previousSprint;
   if (!sprint) {
-    return '# Отчёт\n\nНет данных о спринте.';
+    return '# Отчёт\n\nНет данных о предыдущем спринте.';
   }
 
   const sprintNumber = extractSprintNumber(sprint.sprint.name);
@@ -94,7 +95,7 @@ function buildMockReport(data: PartnerReportInput): string {
   const doneIssues = sprint.issues.filter(i => i.statusCategory === 'done');
   const notDoneIssues = sprint.issues.filter(i => i.statusCategory !== 'done');
 
-  let report = `# ✅ Отчёт по спринту ${sprintNumber}
+  let report = `# ✅ Sprint ${sprintNumber}
 
 ## **Отчет по итогам реализованного спринта**
 
@@ -159,7 +160,8 @@ ${sprint.issues.filter(i => i.artifact).length > 0
 async function generateWithAI(data: PartnerReportInput): Promise<string> {
   const openai = new OpenAI({ apiKey: OPENAI_CONFIG.apiKey });
 
-  const sprint = data.basicBoardData?.currentSprint;
+  // Use previous sprint (completed) for the report, not current sprint
+  const sprint = data.basicBoardData?.previousSprint;
   const analysis = data.analysis;
   const version = data.basicBoardData?.activeVersion;
 
