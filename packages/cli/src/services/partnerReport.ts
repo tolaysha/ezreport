@@ -43,13 +43,24 @@ function extractSprintNumber(sprintName: string): string {
   return match?.[1] ?? '1';
 }
 
-function calculateProgressPercent(issues: SprintIssue[]): number {
+interface SprintMetrics {
+  totalTasks: number;
+  completedTasks: number;
+  totalPoints: number;
+  completedPoints: number;
+  progressPercent: number;
+}
+
+function calculateSprintMetrics(issues: SprintIssue[]): SprintMetrics {
+  const totalTasks = issues.length;
+  const completedTasks = issues.filter((i: SprintIssue) => i.statusCategory === 'done').length;
   const totalPoints = issues.reduce((sum: number, i: SprintIssue) => sum + (i.storyPoints ?? 0), 0);
   const completedPoints = issues
     .filter((i: SprintIssue) => i.statusCategory === 'done')
     .reduce((sum: number, i: SprintIssue) => sum + (i.storyPoints ?? 0), 0);
+  const progressPercent = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
 
-  return totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
+  return { totalTasks, completedTasks, totalPoints, completedPoints, progressPercent };
 }
 
 // =============================================================================
@@ -65,19 +76,28 @@ const SYSTEM_PROMPT = `Ты — AI, который генерирует отчё
 
 ТРЕБОВАНИЯ К СТИЛЮ:
 - Тон: уверенный, спокойный, партнёрский.
-- Overview — 2–3 абзаца, подчёркивая что планировали, что сделали, что это значит.
-- Достижения — простым языком, объясняя ценность.
 - Если чего-то нет — явно писать «Нет» или «Не было».
+- ЗАПРЕЩЕНО использовать технические термины: API, бэкенд, фронтенд, архитектура, пайплайн, модели, девопс, деплой, рефакторинг и т.п.
 
 СТРУКТУРА ОТЧЁТА:
 1. Заголовок: "# ✅ Sprint N" (где N — номер спринта, без дополнительного текста)
 2. Информация о версии (если есть)
-3. Информация о спринте (даты, цель, прогресс)
-4. Overview спринта
-5. Ключевые достижения
-6. Что не сделано и почему
-7. Артефакты (демо, видео)
-8. План следующего спринта
+3. Информация о спринте (даты, цель)
+4. Overview спринта:
+   - Текст 4-6 предложений: что планировали сделать, что в итоге сделали, какие были сложности, что важно для понимания партнёров. Пиши бизнес-языком.
+   - Таблица "Основные показатели" (Story Points выполнено X из Y, Задач завершено X из Y, Прогресс %)
+5. Ключевые достижения (3-5 штук):
+   - Выбери самые сложные/значимые выполненные задачи
+   - Формат: "- [Достижение простым языком] — [Описание и пояснение ценности]"
+6. Что не сделано и почему:
+   - Список всех задач со статусом НЕ "done"
+   - Формат: "- [Задача простым языком] — [Причина и что требуется для завершения] — [Новый дедлайн]"
+7. Артефакты (демо, видео):
+   - Написать: "Раздел в разработке, будет доступен в следующей версии."
+8. План текущего спринта:
+   - Заголовок: "Спринт №[Номер]"
+   - Цель спринта — 1-2 предложения
+   - Список основных задач спринта
 9. Блокеры (если есть)
 10. Вопросы PM (если есть)
 
@@ -95,7 +115,7 @@ function buildMockReport(data: PartnerReportInput): string {
 
   const previousSprintNumber = extractSprintNumber(previousSprint.sprint.name);
   const currentSprintNumber = currentSprint ? extractSprintNumber(currentSprint.sprint.name) : String(Number(previousSprintNumber) + 1);
-  const progressPercent = calculateProgressPercent(previousSprint.issues);
+  const metrics = calculateSprintMetrics(previousSprint.issues);
   const doneIssues = previousSprint.issues.filter(i => i.statusCategory === 'done');
   const notDoneIssues = previousSprint.issues.filter(i => i.statusCategory !== 'done');
 
@@ -109,15 +129,19 @@ function buildMockReport(data: PartnerReportInput): string {
 
 **Цель спринта:** ${previousSprint.sprint.goal || 'Не указана'}
 
-**Спринт реализован на ${progressPercent}%**
-
 ---
 
 ## Overview спринта
 
-В этом спринте команда работала над ${previousSprint.issues.length} задачами. Успешно завершено ${doneIssues.length} задач, что составляет ${progressPercent}% от запланированного объёма.
+Спринт завершён на **${metrics.progressPercent}%**.${doneIssues.length > 0 ? ' Команда выполнила ключевые задачи в рамках плана.' : ''}
 
-${doneIssues.length > 0 ? 'Основные усилия были направлены на реализацию ключевого функционала.' : 'Спринт был направлен на подготовительные работы.'}
+### Основные показатели
+
+| Показатель | Значение |
+|------------|----------|
+| Story Points выполнено | ${metrics.completedPoints} из ${metrics.totalPoints} |
+| Задач завершено | ${metrics.completedTasks} из ${metrics.totalTasks} |
+| Прогресс | ${metrics.progressPercent}% |
 
 ---
 
