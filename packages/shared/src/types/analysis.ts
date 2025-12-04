@@ -56,3 +56,4 @@ export interface GoalAlignmentResult {
   comment: string;
 }
 
+

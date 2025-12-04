@@ -140,3 +140,4 @@ export const REPORT_BLOCKS: ReportBlockConfig[] = [
   },
 ];
 
+

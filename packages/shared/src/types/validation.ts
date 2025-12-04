@@ -46,3 +46,4 @@ export interface SprintReportValidationResult {
   partnerReadiness?: PartnerReadinessAssessment | null;
 }
 
+

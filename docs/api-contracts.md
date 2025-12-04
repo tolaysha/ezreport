@@ -339,3 +339,4 @@ curl -X POST http://localhost:4000/api/workflow/run-step \
 | `PROGRESS_OUT_OF_RANGE` | Прогресс вне диапазона 0-100 |
 | `NOT_PARTNER_READY` | Отчёт не готов для партнёров |
 
+
