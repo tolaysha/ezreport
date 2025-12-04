@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useColor } from '@/lib/colorContext';
 
 const CORRECT_PASSWORD = 'unimatch';
@@ -17,14 +17,34 @@ const colorToRgb: Record<string, string> = {
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { colorScheme } = useColor();
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
+  const [showBlackOverlay, setShowBlackOverlay] = useState(false);
+  const [fadeOutOverlay, setFadeOutOverlay] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const primaryRgb = colorToRgb[colorScheme.primary] || '34, 197, 94';
+
+  // Handle fromDelete parameter - show black screen that fades out
+  useEffect(() => {
+    if (searchParams.get('fromDelete') === 'true') {
+      setShowBlackOverlay(true);
+      // Start fade out after a small delay
+      setTimeout(() => {
+        setFadeOutOverlay(true);
+      }, 100);
+      // Remove overlay after fade completes
+      setTimeout(() => {
+        setShowBlackOverlay(false);
+        // Clean up URL
+        router.replace('/');
+      }, 2100);
+    }
+  }, [searchParams, router]);
 
   // Cursor blink
   useEffect(() => {
@@ -163,6 +183,15 @@ export default function Home() {
           animation: shake 0.4s ease-in-out;
         }
       `}</style>
+
+      {/* Black overlay for fromDelete transition */}
+      {showBlackOverlay && (
+        <div 
+          className={`fixed inset-0 bg-black z-50 transition-opacity duration-[2000ms] ${
+            fadeOutOverlay ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+      )}
     </div>
   );
 }

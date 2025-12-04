@@ -43,49 +43,65 @@ export function SprintCard({ title, data, variant }: SprintCardProps) {
         <div className="text-green-500 font-mono text-lg font-bold">
           {data.sprint.name}
         </div>
-        {data.sprint.startDate && data.sprint.endDate && (
-          <div className="text-green-500/70 font-mono text-xs mt-1">
-            {data.sprint.startDate} — {data.sprint.endDate}
+        <div className="font-mono text-xs mt-1">
+          {data.sprint.startDate && data.sprint.endDate ? (
+            <span className="text-green-500/70">
+              {data.sprint.startDate} — {data.sprint.endDate}
+            </span>
+          ) : (
+            <span className="text-red-500">
+              ⚠️ Даты спринта не указаны
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Goal */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-green-500/70 font-mono text-xs">ЦЕЛЬ:</span>
+          {data.sprint.goal && data.sprint.goalIsGenerated && (
+            <span className="text-purple-400/80 font-mono text-xs px-1.5 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded">
+              🤖 AI
+            </span>
+          )}
+        </div>
+        {data.sprint.goal ? (
+          <div className={`font-mono text-sm ${data.sprint.goalIsGenerated ? 'text-purple-400/90 italic' : 'text-green-500'}`}>
+            {data.sprint.goal}
+          </div>
+        ) : (
+          <div className="text-red-500 font-mono text-sm">
+            ⚠️ Цель спринта не указана
           </div>
         )}
       </div>
 
-      {/* Goal */}
-      {data.sprint.goal && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-green-500/70 font-mono text-xs">ЦЕЛЬ:</span>
-            {data.sprint.goalIsGenerated && (
-              <span className="text-purple-400/80 font-mono text-xs px-1.5 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded">
-                🤖 AI
-              </span>
-            )}
-          </div>
-          <div className={`font-mono text-sm ${data.sprint.goalIsGenerated ? 'text-purple-400/90 italic' : 'text-green-500'}`}>
-            {data.sprint.goal}
-          </div>
-        </div>
-      )}
-
       {/* Goal Match Assessment */}
-      {data.goalMatchLevel !== 'unknown' && (
-        <div className="mb-4 p-3 border border-green-500/30 bg-green-500/5">
-          <div className="text-green-500/70 font-mono text-xs mb-1">
-            СООТВЕТСТВИЕ ЗАДАЧ ЦЕЛИ:
-          </div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`font-mono text-sm font-bold ${getGoalMatchColor(data.goalMatchLevel)}`}>
-              {getGoalMatchLabel(data.goalMatchLevel)}
-            </span>
-            <span className="text-green-500/50 font-mono text-xs">
-              ({data.goalMatchLevel})
-            </span>
-          </div>
-          <div className="text-green-500/80 font-mono text-xs">
-            {data.goalMatchComment}
-          </div>
+      <div className="mb-4 p-3 border border-green-500/30 bg-green-500/5">
+        <div className="text-green-500/70 font-mono text-xs mb-1">
+          СООТВЕТСТВИЕ ЗАДАЧ ЦЕЛИ:
         </div>
-      )}
+        {data.goalMatchLevel !== 'unknown' ? (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`font-mono text-sm font-bold ${getGoalMatchColor(data.goalMatchLevel)}`}>
+                {getGoalMatchLabel(data.goalMatchLevel)}
+              </span>
+              <span className="text-green-500/50 font-mono text-xs">
+                ({data.goalMatchLevel})
+              </span>
+            </div>
+            <div className="text-green-500/80 font-mono text-xs">
+              {data.goalMatchComment}
+            </div>
+          </>
+        ) : (
+          <div className="text-red-500 font-mono text-sm">
+            ⚠️ Нет данных для оценки
+          </div>
+        )}
+      </div>
 
       {/* Issues Stats */}
       <div className="mb-4">
