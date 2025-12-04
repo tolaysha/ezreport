@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type {
   SprintReportParams,
   CollectDataResponse,
@@ -74,6 +75,7 @@ interface HistoryEntry {
 // =============================================================================
 
 export default function DataPage() {
+  const router = useRouter();
   const [collectResponse, setCollectResponse] = useState<CollectDataResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<StrategicAnalysis | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -404,6 +406,29 @@ export default function DataPage() {
               />
             )}
           </ConsolePanel>
+        )}
+
+        {/* Make EzReport Button - appears after strategic analysis */}
+        {analysisResult && collectResponse?.basicBoardData && (
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={() => {
+                // Save collected data to localStorage for the report page
+                localStorage.setItem('ezreport_collected_data', JSON.stringify({
+                  basicBoardData: collectResponse.basicBoardData,
+                  analysis: analysisResult,
+                }));
+                router.push('/report');
+              }}
+              className="group relative border-2 border-green-500 bg-green-500/10 text-green-400 px-8 py-4 font-mono text-lg font-bold hover:bg-green-500 hover:text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+            >
+              <span className="flex items-center gap-3">
+                <span className="text-2xl">📄</span>
+                <span>MAKE EZREPORT</span>
+                <span className="group-hover:translate-x-1 transition-transform">→</span>
+              </span>
+            </button>
+          </div>
         )}
       </div>
     </div>
