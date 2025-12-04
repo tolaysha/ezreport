@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import Link from 'next/link';
 import type {
   SprintReportParams,
@@ -12,8 +12,6 @@ import { collectData, generateReport, analyzeData } from '@/lib/apiClient';
 import {
   ConsolePanel,
   ConsoleHeading,
-  ConsoleButton,
-  ConsoleInput,
   BackendStatus,
 } from '@/components/console';
 import { SprintCard, VersionCard, AnalysisPanel } from '@/components/sprint';
@@ -99,6 +97,16 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
 }
 
 // =============================================================================
+// Terminal History Entry
+// =============================================================================
+
+interface HistoryEntry {
+  command: string;
+  response: string;
+  type: 'success' | 'error' | 'info';
+}
+
+// =============================================================================
 // Main Page Component
 // =============================================================================
 
@@ -108,31 +116,66 @@ export default function DataPage() {
   const [analysisResult, setAnalysisResult] = useState<StrategicAnalysis | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
-  const [boardId, setBoardId] = useState('133');
+  
+  // Terminal state
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [showCursor, setShowCursor] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
 
-  const buildParams = (): SprintReportParams => ({
-    boardId: boardId.trim() || undefined,
-  });
+  // Cursor blink
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 530);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleCollectData = async () => {
-    const params = buildParams();
-    if (!params.boardId) {
-      setError('Board ID обязателен');
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Auto-scroll terminal
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  const addToHistory = (command: string, response: string, type: 'success' | 'error' | 'info') => {
+    setHistory(prev => [...prev, { command, response, type }]);
+  };
+
+  const handleCollectData = async (boardId: string) => {
+    if (!boardId.trim()) {
+      addToHistory(`start`, 'ERROR: Board ID обязателен. Использование: start <board_id>', 'error');
       return;
     }
 
     setIsRunning(true);
-    setError(null);
     setAnalysisResult(null);
+    addToHistory(`start ${boardId}`, 'Загрузка данных...', 'info');
 
     try {
-      // Data collection step - no AI calls
+      const params: SprintReportParams = { boardId: boardId.trim() };
       const result = await collectData(params);
       setCollectResponse(result);
+      
+      const projectName = result.basicBoardData?.projectName || 'Unknown';
+      const hasCurrent = result.basicBoardData?.availability.hasCurrentSprint;
+      const hasPrevious = result.basicBoardData?.availability.hasPreviousSprint;
+      
+      addToHistory(
+        '', 
+        `✓ Данные загружены: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
+        'success'
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      addToHistory('', `ERROR: ${errorMessage}`, 'error');
     } finally {
       setIsRunning(false);
     }
@@ -140,12 +183,12 @@ export default function DataPage() {
 
   const handleRunAnalysis = async () => {
     if (!collectResponse?.basicBoardData?.currentSprint) {
-      setError('Нет данных для анализа. Сначала загрузите данные спринта.');
+      addToHistory('analyze', 'ERROR: Нет данных для анализа. Сначала выполните start <board_id>', 'error');
       return;
     }
 
     setIsAnalyzing(true);
-    setError(null);
+    addToHistory('analyze', 'Запуск AI анализа...', 'info');
 
     try {
       const result = await analyzeData({
@@ -156,25 +199,49 @@ export default function DataPage() {
       });
       if (result.analysis) {
         setAnalysisResult(result.analysis);
+        addToHistory('', '✓ AI анализ завершен', 'success');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      addToHistory('', `ERROR: ${errorMessage}`, 'error');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleGenerateReport = async () => {
-    setIsRunning(true);
-    setError(null);
+  const handleCommand = (cmd: string) => {
+    const trimmed = cmd.trim().toLowerCase();
+    
+    if (!trimmed) return;
 
-    try {
-      const result = await generateReport(buildParams());
-      setReportResponse(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setIsRunning(false);
+    // Parse command
+    if (trimmed.startsWith('start ')) {
+      const boardId = cmd.trim().slice(6).trim();
+      handleCollectData(boardId);
+    } else if (trimmed === 'start') {
+      addToHistory('start', 'ERROR: Укажите Board ID. Использование: start <board_id>', 'error');
+    } else if (trimmed === 'analyze') {
+      handleRunAnalysis();
+    } else if (trimmed === 'help') {
+      addToHistory('help', 
+        'Доступные команды:\n' +
+        '  start <board_id>  - Загрузить данные спринта\n' +
+        '  analyze           - Запустить AI анализ\n' +
+        '  clear             - Очистить терминал\n' +
+        '  help              - Показать справку',
+        'info'
+      );
+    } else if (trimmed === 'clear') {
+      setHistory([]);
+    } else {
+      addToHistory(cmd, `ERROR: Неизвестная команда "${trimmed}". Введите help для справки.`, 'error');
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !isRunning && !isAnalyzing) {
+      handleCommand(input);
+      setInput('');
     }
   };
 
@@ -182,7 +249,10 @@ export default function DataPage() {
   const hasData = basicBoardData?.availability.hasPreviousSprint || basicBoardData?.availability.hasCurrentSprint;
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-8">
+    <div 
+      className="min-h-screen bg-black p-4 md:p-8"
+      onClick={() => inputRef.current?.focus()}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8 border-b border-green-500 pb-4">
@@ -201,43 +271,95 @@ export default function DataPage() {
           </p>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 border border-red-500 bg-black p-4">
-            <div className="text-red-500 font-mono text-sm">[ERROR] {error}</div>
-          </div>
-        )}
-
-        {/* Control Panel */}
+        {/* Terminal Console */}
         <ConsolePanel className="mb-8">
-          <ConsoleHeading level={2} className="mb-4">[ ПАРАМЕТРЫ ]</ConsoleHeading>
-          <BackendStatus />
-          <div className="space-y-4 mb-6">
-            <ConsoleInput
-              label="Board ID:"
-              value={boardId}
-              onChange={setBoardId}
-              disabled={isRunning}
-              placeholder="e.g., 133"
-            />
-            <div className="text-green-500/60 font-mono text-xs">
-              На основе Board ID будут получены текущий (активный) и прошедший (закрытый) спринты
+          <div className="flex items-center justify-between mb-4">
+            <ConsoleHeading level={2}>[ ТЕРМИНАЛ ]</ConsoleHeading>
+            <BackendStatus />
+          </div>
+          
+          {/* Terminal output area */}
+          <div 
+            ref={terminalRef}
+            className="bg-black/50 border border-green-500/30 p-4 mb-4 h-48 overflow-y-auto font-mono text-sm"
+          >
+            {/* Welcome message */}
+            <div className="text-green-500/70 mb-2">
+              ezreport data collector v1.0
+            </div>
+            <div className="text-green-500/50 mb-4">
+              Введите <span className="text-green-400">start {'<board_id>'}</span> для загрузки данных
+            </div>
+            
+            {/* History */}
+            {history.map((entry, idx) => (
+              <div key={idx} className="mb-2">
+                {entry.command && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-500">{'>'}</span>
+                    <span className="text-green-400">{entry.command}</span>
+                  </div>
+                )}
+                <div className={`whitespace-pre-wrap pl-4 ${
+                  entry.type === 'error' ? 'text-red-400' :
+                  entry.type === 'success' ? 'text-green-400' :
+                  'text-green-500/70'
+                }`}>
+                  {entry.response}
+                </div>
+              </div>
+            ))}
+            
+            {/* Loading indicator in terminal */}
+            {(isRunning || isAnalyzing) && (
+              <div className="flex items-center gap-2 text-green-500 animate-pulse">
+                <span className="animate-spin">◌</span>
+                <span>{isAnalyzing ? 'AI анализ...' : 'Загрузка...'}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Input line */}
+          <div className="flex items-center gap-2 font-mono">
+            <span className="text-green-500">{'>'}</span>
+            <div className="relative flex-1">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full bg-transparent outline-none caret-transparent font-mono text-green-400"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={isRunning || isAnalyzing}
+                placeholder={isRunning || isAnalyzing ? 'Подождите...' : ''}
+              />
+              {/* Block cursor */}
+              <span 
+                className={`absolute top-0 text-green-500 ${showCursor && !isRunning && !isAnalyzing ? 'opacity-100' : 'opacity-0'}`}
+                style={{ left: `${input.length}ch` }}
+              >
+                █
+              </span>
             </div>
           </div>
-          <ConsoleButton onClick={handleCollectData} disabled={isRunning}>
-            [RUN] Collect Sprint Data
-          </ConsoleButton>
+          
+          {/* Hint */}
+          <div className="mt-3 text-green-500/40 font-mono text-xs">
+            Команды: start {'<board_id>'} | analyze | help | clear
+          </div>
         </ConsolePanel>
 
         {/* Results */}
         <ConsolePanel>
-          <ConsoleHeading level={2} className="mb-4">[ РЕЗУЛЬТАТЫ ]</ConsoleHeading>
+          <ConsoleHeading level={2} className="mb-4">[ ДАННЫЕ ]</ConsoleHeading>
 
           {isRunning ? (
             <LoadingIndicator />
           ) : !collectResponse ? (
             <div className="text-green-500/50 font-mono text-sm">
-              [ Нажмите "Collect Sprint Data" для загрузки данных ]
+              [ Выполните команду start {'<board_id>'} для загрузки данных ]
             </div>
           ) : basicBoardData ? (
             <div className="space-y-6">
@@ -333,19 +455,22 @@ export default function DataPage() {
 
         {/* Navigation to next step */}
         <div className="mt-8 text-center">
-          <Link
-            href="/analyse"
-            className={`inline-block border text-lg px-8 py-4 font-mono transition-colors ${
-              hasData
-                ? 'border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]'
-                : 'border-green-500/50 text-green-500/50 cursor-default'
-            }`}
-          >
-            [NEXT] Перейти к анализу →
-          </Link>
+          {hasData ? (
+            <Link
+              href="/analyse"
+              className="inline-block border-2 text-lg px-8 py-4 font-mono transition-all duration-300 border-purple-500 text-purple-300 bg-purple-500/10 hover:bg-purple-500/30 hover:text-white shadow-[0_0_20px_rgba(168,85,247,0.4),0_0_40px_rgba(168,85,247,0.2),inset_0_0_20px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6),0_0_60px_rgba(168,85,247,0.3),inset_0_0_30px_rgba(168,85,247,0.2)] animate-pulse-slow"
+            >
+              🤖 [AI] Перейти к анализу →
+            </Link>
+          ) : (
+            <div className="inline-block border-2 text-lg px-8 py-4 font-mono border-purple-500/20 text-purple-500/30 bg-purple-500/5 cursor-not-allowed relative overflow-hidden">
+              <span className="opacity-50">🤖 [AI] Перейти к анализу →</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent animate-shimmer" />
+            </div>
+          )}
           {!hasData && (
-            <div className="text-green-500/40 font-mono text-xs mt-2">
-              Сначала загрузите данные
+            <div className="text-purple-500/40 font-mono text-xs mt-3">
+              ⏳ Ожидание данных из Jira...
             </div>
           )}
         </div>
@@ -353,4 +478,3 @@ export default function DataPage() {
     </div>
   );
 }
-

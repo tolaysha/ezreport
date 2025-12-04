@@ -1,119 +1,144 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ConsolePanel, ConsoleHeading, BackendStatus } from '@/components/console';
+
+const CORRECT_PASSWORD = 'unimatch';
 
 export default function Home() {
   const router = useRouter();
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Cursor blink
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
+    const interval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 530);
+    return () => clearInterval(interval);
+  }, []);
 
-      if (e.key === '1') router.push('/data');
-      if (e.key === '2') router.push('/analyse');
-      if (e.key === '3') router.push('/report');
-    };
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router]);
+  const handleSubmit = () => {
+    if (!input.trim()) return;
+
+    if (input.trim().toLowerCase() === CORRECT_PASSWORD) {
+      setSuccess(true);
+      setError(false);
+      setTimeout(() => {
+        router.push('/data');
+      }, 800);
+    } else {
+      setError(true);
+      setInput('');
+      setTimeout(() => setError(false), 1000);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 border-b border-green-500 pb-4">
-          <ConsoleHeading level={1} className="mb-2">
-            EzReport Web Console
-          </ConsoleHeading>
-          <p className="text-green-500 font-mono text-sm opacity-80">
-            Sprint Report Workflow Control Panel
-          </p>
-        </div>
-
-        {/* Backend Status */}
-        <ConsolePanel className="mb-8">
-          <BackendStatus />
-        </ConsolePanel>
-
-        {/* Navigation Menu */}
-        <ConsolePanel>
-          <ConsoleHeading level={2} className="mb-6">
-            [ WORKFLOW STAGES ]
-          </ConsoleHeading>
-
-          <div className="space-y-4">
-            <NavItem
-              href="/data"
-              number={1}
-              title="Сбор данных"
-              description="Сбор данных из Jira, оценка качества и полноты информации"
-            />
-
-            <NavItem
-              href="/analyse"
-              number={2}
-              title="Анализ и генерация"
-              description="Пошаговая генерация каждого блока с просмотром промптов и входных данных"
-            />
-
-            <NavItem
-              href="/report"
-              number={3}
-              title="Финальный отчёт"
-              description="Готовый отчёт для партнёров в формате Markdown"
-            />
-          </div>
-        </ConsolePanel>
-
-        {/* Quick Info */}
-        <div className="mt-8 text-green-500/60 font-mono text-xs">
-          <div className="mb-1">[ KEYBOARD SHORTCUTS ]</div>
-          <div>Press number keys (1, 2, 3) to navigate to stages</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface NavItemProps {
-  href: string;
-  number: number;
-  title: string;
-  description: string;
-}
-
-function NavItem({ href, number, title, description }: NavItemProps) {
-  return (
-    <Link
-      href={href}
-      className="block border border-green-500 p-4 hover:bg-green-500 hover:text-black transition-colors group"
+    <div 
+      className="min-h-screen bg-black flex items-center justify-center p-4"
+      onClick={() => inputRef.current?.focus()}
     >
-      <div className="flex items-start gap-4">
-        <div className="text-green-500 group-hover:text-black font-mono text-xl">
-          [{number}]
-        </div>
-        <div className="flex-1">
-          <div className="font-mono text-lg text-green-500 group-hover:text-black mb-1">
-            {title}
+      <div className="text-center">
+        {/* Logo */}
+        <h1 
+          className={`text-6xl md:text-8xl font-bold mb-16 tracking-tight transition-all duration-500 ${
+            success ? 'text-green-400' : error ? 'text-red-500' : 'text-zinc-700'
+          }`}
+          style={{
+            textShadow: success
+              ? '0 0 20px rgba(34, 197, 94, 1), 0 0 40px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.6), 0 0 100px rgba(34, 197, 94, 0.4)'
+              : error
+              ? '0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(239, 68, 68, 0.4)'
+              : 'none',
+          }}
+        >
+          ezreport
+        </h1>
+
+        {/* Terminal input */}
+        <div 
+          className={`font-mono text-lg transition-all duration-300 ${
+            error ? 'animate-shake' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span className={`${error ? 'text-red-500' : 'text-green-500'} transition-colors`}>
+              {'>'}
+            </span>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={`bg-transparent outline-none caret-transparent font-mono text-lg min-w-[180px] transition-colors ${
+                  error ? 'text-red-400' : 'text-green-400'
+                }`}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={success}
+              />
+              {/* Block cursor */}
+              <span 
+                className={`absolute top-0 transition-all ${
+                  error ? 'text-red-500' : 'text-green-500'
+                } ${showCursor && !success ? 'opacity-100' : 'opacity-0'}`}
+                style={{ left: `${input.length}ch` }}
+              >
+                █
+              </span>
+            </div>
           </div>
-          <div className="font-mono text-sm text-green-500/70 group-hover:text-black/70">
-            {description}
-          </div>
         </div>
-        <div className="text-green-500 group-hover:text-black font-mono">
-          →
-        </div>
+
+        {/* Status text */}
+        <p 
+          className={`mt-8 text-sm font-mono transition-all duration-300 ${
+            success ? 'text-green-400' : error ? 'text-red-500' : 'text-zinc-600'
+          }`}
+        >
+          {success ? 'access granted' : error ? 'access denied' : 'enter access code'}
+        </p>
       </div>
-    </Link>
+
+      {/* Background glow */}
+      <div 
+        className={`fixed inset-0 pointer-events-none transition-opacity duration-500 ${
+          success ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          background: 'radial-gradient(circle at center, rgba(34, 197, 94, 0.15) 0%, transparent 50%)',
+        }}
+      />
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-8px); }
+          80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-in-out;
+        }
+      `}</style>
+    </div>
   );
 }
