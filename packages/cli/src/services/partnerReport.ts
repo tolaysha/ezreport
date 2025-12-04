@@ -84,26 +84,30 @@ const SYSTEM_PROMPT = `Ты — AI, который генерирует отчё
 Верни только markdown-документ без дополнительных комментариев.`;
 
 function buildMockReport(data: PartnerReportInput): string {
-  // Use previous sprint (completed) for the report, not current sprint
-  const sprint = data.basicBoardData?.previousSprint;
-  if (!sprint) {
+  // Use previous sprint (completed) for the report content
+  const previousSprint = data.basicBoardData?.previousSprint;
+  // Use current sprint for "next sprint plan" section
+  const currentSprint = data.basicBoardData?.currentSprint;
+
+  if (!previousSprint) {
     return '# Отчёт\n\nНет данных о предыдущем спринте.';
   }
 
-  const sprintNumber = extractSprintNumber(sprint.sprint.name);
-  const progressPercent = calculateProgressPercent(sprint.issues);
-  const doneIssues = sprint.issues.filter(i => i.statusCategory === 'done');
-  const notDoneIssues = sprint.issues.filter(i => i.statusCategory !== 'done');
+  const previousSprintNumber = extractSprintNumber(previousSprint.sprint.name);
+  const currentSprintNumber = currentSprint ? extractSprintNumber(currentSprint.sprint.name) : String(Number(previousSprintNumber) + 1);
+  const progressPercent = calculateProgressPercent(previousSprint.issues);
+  const doneIssues = previousSprint.issues.filter(i => i.statusCategory === 'done');
+  const notDoneIssues = previousSprint.issues.filter(i => i.statusCategory !== 'done');
 
-  let report = `# ✅ Sprint ${sprintNumber}
+  let report = `# ✅ Sprint ${previousSprintNumber}
 
 ## **Отчет по итогам реализованного спринта**
 
 ---
 
-**Спринт №${sprintNumber}** — срок реализации с ${formatDateRussian(sprint.sprint.startDate)} по ${formatDateRussian(sprint.sprint.endDate)}
+**Спринт №${previousSprintNumber}** — срок реализации с ${formatDateRussian(previousSprint.sprint.startDate)} по ${formatDateRussian(previousSprint.sprint.endDate)}
 
-**Цель спринта:** ${sprint.sprint.goal || 'Не указана'}
+**Цель спринта:** ${previousSprint.sprint.goal || 'Не указана'}
 
 **Спринт реализован на ${progressPercent}%**
 
@@ -111,7 +115,7 @@ function buildMockReport(data: PartnerReportInput): string {
 
 ## Overview спринта
 
-В этом спринте команда работала над ${sprint.issues.length} задачами. Успешно завершено ${doneIssues.length} задач, что составляет ${progressPercent}% от запланированного объёма.
+В этом спринте команда работала над ${previousSprint.issues.length} задачами. Успешно завершено ${doneIssues.length} задач, что составляет ${progressPercent}% от запланированного объёма.
 
 ${doneIssues.length > 0 ? 'Основные усилия были направлены на реализацию ключевого функционала.' : 'Спринт был направлен на подготовительные работы.'}
 
@@ -131,15 +135,15 @@ ${notDoneIssues.length > 0 ? notDoneIssues.map(issue => `- **${issue.summary}** 
 
 ## Артефакты
 
-${sprint.issues.filter(i => i.artifact).length > 0 
-  ? sprint.issues.filter(i => i.artifact).map(i => `- [${i.summary}](${i.artifact})`).join('\n')
+${previousSprint.issues.filter(i => i.artifact).length > 0 
+  ? previousSprint.issues.filter(i => i.artifact).map(i => `- [${i.summary}](${i.artifact})`).join('\n')
   : 'Нет артефактов для демонстрации.'}
 
 ---
 
 ## План следующего спринта
 
-Следующий спринт №${Number(sprintNumber) + 1} будет направлен на продолжение работы над продуктом${notDoneIssues.length > 0 ? ' и завершение перенесённых задач' : ''}.
+Следующий спринт №${currentSprintNumber}${currentSprint?.sprint.goal ? `: ${currentSprint.sprint.goal}` : ''} будет направлен на продолжение работы над продуктом${notDoneIssues.length > 0 ? ' и завершение перенесённых задач' : ''}.
 
 ---
 
@@ -160,15 +164,19 @@ ${sprint.issues.filter(i => i.artifact).length > 0
 async function generateWithAI(data: PartnerReportInput): Promise<string> {
   const openai = new OpenAI({ apiKey: OPENAI_CONFIG.apiKey });
 
-  // Use previous sprint (completed) for the report, not current sprint
-  const sprint = data.basicBoardData?.previousSprint;
+  // Use previous sprint (completed) for the report content
+  const previousSprint = data.basicBoardData?.previousSprint;
+  // Use current sprint for "next sprint plan" section
+  const currentSprint = data.basicBoardData?.currentSprint;
   const analysis = data.analysis;
   const version = data.basicBoardData?.activeVersion;
 
   const userPrompt = `Сгенерируй партнёрский отчёт по следующим данным:
 
-СПРИНТ:
-${JSON.stringify(sprint, null, 2)}
+ЗАВЕРШЁННЫЙ СПРИНТ (основа отчёта):
+${JSON.stringify(previousSprint, null, 2)}
+
+${currentSprint ? `ТЕКУЩИЙ СПРИНТ (для раздела "План следующего спринта"):\n${JSON.stringify(currentSprint, null, 2)}` : ''}
 
 ${version ? `ВЕРСИЯ:\n${JSON.stringify(version, null, 2)}` : ''}
 
