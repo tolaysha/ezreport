@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
 import { SprintReportWorkflowParams, RunStepResponse } from '@/types/workflow';
 import { runStep } from '@/lib/apiClient';
 import {
@@ -20,34 +19,16 @@ export default function Stage1Page() {
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
 
-  // Form state - defaults for "toys" project
-  const [sprintId, setSprintId] = useState('');
-  const [sprintName, setSprintName] = useState('toys');
+  // Form state - only Board ID is required, rest is auto-collected
   const [boardId, setBoardId] = useState('toys');
   const [mockMode, setMockMode] = useState(true);
-  const [extraJson, setExtraJson] = useState('');
-  const [extraJsonError, setExtraJsonError] = useState('');
-  const [showExtraJson, setShowExtraJson] = useState(false);
 
   const buildParams = (): SprintReportWorkflowParams | null => {
     const params: SprintReportWorkflowParams = {
       mockMode,
     };
 
-    if (sprintId.trim()) params.sprintId = sprintId.trim();
-    if (sprintName.trim()) params.sprintName = sprintName.trim();
     if (boardId.trim()) params.boardId = boardId.trim();
-
-    if (extraJson.trim()) {
-      try {
-        const parsed = JSON.parse(extraJson);
-        params.extra = parsed;
-        setExtraJsonError('');
-      } catch {
-        setExtraJsonError('Parse error: invalid JSON');
-        return null;
-      }
-    }
 
     return params;
   };
@@ -113,27 +94,11 @@ export default function Stage1Page() {
 
           <div className="space-y-4 mb-6">
             <ConsoleInput
-              label="Sprint ID:"
-              value={sprintId}
-              onChange={setSprintId}
-              disabled={isRunning}
-              placeholder="e.g., 12345"
-            />
-
-            <ConsoleInput
-              label="Sprint Name:"
-              value={sprintName}
-              onChange={setSprintName}
-              disabled={isRunning}
-              placeholder="e.g., Sprint 42"
-            />
-
-            <ConsoleInput
               label="Board ID:"
               value={boardId}
               onChange={setBoardId}
               disabled={isRunning}
-              placeholder="e.g., board-123"
+              placeholder="e.g., toys"
             />
 
             <ConsoleCheckbox
@@ -143,34 +108,8 @@ export default function Stage1Page() {
               disabled={isRunning}
             />
 
-            <div>
-              <button
-                onClick={() => setShowExtraJson(!showExtraJson)}
-                disabled={isRunning}
-                className="flex items-center text-green-500 font-mono text-sm hover:text-green-300 transition-colors disabled:opacity-50"
-              >
-                <ChevronRight
-                  className={`w-4 h-4 mr-1 transition-transform ${showExtraJson ? 'rotate-90' : ''}`}
-                />
-                Extra JSON params
-              </button>
-              {showExtraJson && (
-                <div className="mt-2">
-                  <ConsoleInput
-                    label=""
-                    value={extraJson}
-                    onChange={setExtraJson}
-                    disabled={isRunning}
-                    placeholder='{"key": "value"}'
-                    type="textarea"
-                  />
-                  {extraJsonError && (
-                    <div className="text-red-500 font-mono text-xs mt-1">
-                      {extraJsonError}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="text-green-500/60 font-mono text-xs">
+              Sprint ID, Name и другие параметры будут получены автоматически на основе Board ID
             </div>
           </div>
 

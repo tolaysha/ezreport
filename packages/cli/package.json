@@ -7,6 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "server": "ts-node --transpile-only src/server.ts",
+    "server:mock": "MOCK_MODE=true ts-node --transpile-only src/server.ts",
     "sprint-report": "ts-node src/index.ts",
     "sprint-report:test": "NODE_ENV=test MOCK_MODE=false ts-node src/index.ts --test",
     "test:connections": "MOCK_MODE=false ts-node src/tests/connections/index.ts",
@@ -28,10 +30,14 @@
   "dependencies": {
     "@notionhq/client": "^2.2.15",
     "axios": "^1.7.9",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "express": "^5.2.1",
     "openai": "^4.77.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.10.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
