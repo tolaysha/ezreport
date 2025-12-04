@@ -9,6 +9,7 @@ import type {
   SprintReportStructured,
   VersionMeta,
 } from '../ai/types';
+import type { SupportedLanguage } from '../i18n/language';
 
 // =============================================================================
 // Domain Types for Workflow
@@ -38,6 +39,7 @@ export interface CollectSprintDataParams {
   sprintNameOrId: string;
   boardId?: string;
   versionMeta?: Partial<VersionMeta>;
+  language: SupportedLanguage;
 }
 
 /**
@@ -115,6 +117,7 @@ export interface BlockGenerationContext {
   versionMeta: Partial<VersionMeta> | undefined;
   stats: CollectedSprintData['stats'];
   goalIssueMatch: GoalIssueMatchAssessment | null;
+  language: SupportedLanguage;
 }
 
 // =============================================================================
@@ -150,6 +153,7 @@ export interface SprintReportWorkflowParams {
   sprintNameOrId: string;
   versionMeta?: Partial<VersionMeta>;
   dryRun?: boolean;
+  language?: SupportedLanguage;
 }
 
 /**
@@ -202,7 +206,7 @@ export const ReportValidationCodes = {
   // Errors
   SECTION_MISSING: 'SECTION_MISSING',
   SECTION_EMPTY: 'SECTION_EMPTY',
-  NOT_RUSSIAN: 'NOT_RUSSIAN',
+  WRONG_LANGUAGE: 'WRONG_LANGUAGE',
   PLACEHOLDER_DETECTED: 'PLACEHOLDER_DETECTED',
   // Warnings
   SPRINT_NUMBER_MISMATCH: 'SPRINT_NUMBER_MISMATCH',

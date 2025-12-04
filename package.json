@@ -1,18 +1,22 @@
 {
   "name": "ezreport",
   "version": "1.0.0",
-  "description": "CLI tool for generating sprint reports in Notion from Jira data using AI",
-  "main": "dist/index.js",
+  "description": "Sprint report automation: CLI + Web Console",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "sprint-report": "ts-node src/index.ts",
-    "sprint-report:test": "NODE_ENV=test MOCK_MODE=false ts-node src/index.ts --test",
-    "test:connections": "MOCK_MODE=false ts-node src/tests/connections/index.ts",
-    "test:jira": "MOCK_MODE=false ts-node src/tests/connections/index.ts --jira",
-    "test:notion": "MOCK_MODE=false ts-node src/tests/connections/index.ts --notion",
-    "test:openai": "MOCK_MODE=false ts-node src/tests/connections/index.ts --openai"
+    "dev": "npm run dev -w @ezreport/web",
+    "dev:cli": "npm run dev -w @ezreport/cli",
+    "build": "npm run build -w @ezreport/cli && npm run build -w @ezreport/web",
+    "build:cli": "npm run build -w @ezreport/cli",
+    "build:web": "npm run build -w @ezreport/web",
+    "sprint-report": "npm run sprint-report -w @ezreport/cli",
+    "sprint-report:test": "npm run sprint-report:test -w @ezreport/cli",
+    "test:connections": "npm run test:connections -w @ezreport/cli",
+    "lint": "npm run lint -w @ezreport/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "repository": {
     "type": "git",
@@ -25,25 +29,11 @@
     "notion",
     "openai",
     "cli",
-    "automation"
+    "web",
+    "monorepo"
   ],
   "author": "",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/tolaysha/ezreport/issues"
-  },
-  "homepage": "https://github.com/tolaysha/ezreport#readme",
-  "dependencies": {
-    "@notionhq/client": "^2.2.15",
-    "axios": "^1.7.9",
-    "dotenv": "^16.4.7",
-    "openai": "^4.77.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
-  },
   "engines": {
     "node": ">=18"
   }

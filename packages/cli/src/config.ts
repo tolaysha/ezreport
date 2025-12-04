@@ -5,12 +5,17 @@ import path from 'path';
 // Environment Loading
 // =============================================================================
 
-// Load .env first (non-sensitive config)
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// Monorepo support: look for .env files in multiple locations
+// Priority: packages/cli/.env.local > packages/cli/.env > root/.env.local > root/.env
 
-// Load .env.local second - this OVERRIDES values from .env
-// All secrets (API tokens, keys) should be placed in .env.local
-dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+const cliRoot = path.resolve(__dirname, '..');
+const monorepoRoot = path.resolve(__dirname, '../../..');
+
+// Load in reverse priority order (later loads override earlier)
+dotenv.config({ path: path.resolve(monorepoRoot, '.env') });
+dotenv.config({ path: path.resolve(monorepoRoot, '.env.local') });
+dotenv.config({ path: path.resolve(cliRoot, '.env') });
+dotenv.config({ path: path.resolve(cliRoot, '.env.local') });
 
 // =============================================================================
 // Mock Mode Flag
