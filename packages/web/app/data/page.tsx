@@ -5,10 +5,9 @@ import Link from 'next/link';
 import type {
   SprintReportParams,
   CollectDataResponse,
-  GenerateReportResponse,
   StrategicAnalysis,
 } from '@/types/workflow';
-import { collectData, generateReport, analyzeData } from '@/lib/apiClient';
+import { collectData, analyzeData } from '@/lib/apiClient';
 import {
   ConsolePanel,
   ConsoleHeading,
@@ -23,28 +22,24 @@ import { SprintCard, VersionCard, AnalysisPanel } from '@/components/sprint';
 function LoadingIndicator() {
   return (
     <div className="py-8">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex gap-1">
-          <span className="w-1.5 h-1.5 rounded-full animate-psychedelic" />
-          <span className="w-1.5 h-1.5 rounded-full animate-psychedelic" style={{ animationDelay: '0.1s' }} />
-          <span className="w-1.5 h-1.5 rounded-full animate-psychedelic" style={{ animationDelay: '0.2s' }} />
-        </div>
-        <span className="font-mono text-sm font-bold animate-psychedelic">
-          ██ COLLECTING DATA ██
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-green-500 animate-spin">◌</span>
+        <span className="font-mono text-sm text-green-400">
+          [ ЗАГРУЗКА ДАННЫХ ]
         </span>
       </div>
-      <div className="space-y-1 font-mono text-xs">
-        <div className="flex items-center gap-2 animate-psychedelic">
-          <span>▓▓▒▒░░</span>
-          <span>Fetching project info from Jira...</span>
+      <div className="space-y-2 font-mono text-xs text-green-500/70">
+        <div className="flex items-center gap-2">
+          <span className="text-green-500 animate-pulse">▸</span>
+          <span>Подключение к Jira...</span>
         </div>
-        <div className="flex items-center gap-2 animate-psychedelic" style={{ animationDelay: '0.2s' }}>
-          <span>▓▓▒▒░░</span>
-          <span>Loading sprints and issues...</span>
+        <div className="flex items-center gap-2">
+          <span className="text-green-500 animate-pulse" style={{ animationDelay: '0.2s' }}>▸</span>
+          <span>Загрузка спринтов...</span>
         </div>
-        <div className="flex items-center gap-2 animate-psychedelic" style={{ animationDelay: '0.4s' }}>
-          <span>▓▓▒▒░░</span>
-          <span>Building sprint cards...</span>
+        <div className="flex items-center gap-2">
+          <span className="text-green-500 animate-pulse" style={{ animationDelay: '0.4s' }}>▸</span>
+          <span>Обработка задач...</span>
         </div>
       </div>
     </div>
@@ -112,11 +107,9 @@ interface HistoryEntry {
 
 export default function DataPage() {
   const [collectResponse, setCollectResponse] = useState<CollectDataResponse | null>(null);
-  const [reportResponse, setReportResponse] = useState<GenerateReportResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<StrategicAnalysis | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showRawJson, setShowRawJson] = useState(false);
   
   // Terminal state
   const [input, setInput] = useState('');
@@ -255,20 +248,17 @@ export default function DataPage() {
     >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8 border-b border-green-500 pb-4">
+        <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
-            <Link href="/" className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors">
-              [HOME]
+            <Link href="/" className="text-green-500 font-bold tracking-tight hover:text-green-300 transition-colors">
+              ezreport
             </Link>
             <span className="text-green-500/50">/</span>
             <span className="text-green-500 font-mono text-sm">Data</span>
           </div>
-          <ConsoleHeading level={1} className="mb-2">
-            [DATA] Сбор данных и валидация
+          <ConsoleHeading level={1}>
+            [DATA] Sprint Data Collection
           </ConsoleHeading>
-          <p className="text-green-500 font-mono text-sm opacity-80">
-            Сбор данных о спринтах из Jira и оценка соответствия задач целям
-          </p>
         </div>
 
         {/* Terminal Console */}
@@ -281,7 +271,7 @@ export default function DataPage() {
           {/* Terminal output area */}
           <div 
             ref={terminalRef}
-            className="bg-black/50 border border-green-500/30 p-4 mb-4 h-48 overflow-y-auto font-mono text-sm"
+            className="bg-black/50 border border-green-500/30 p-4 font-mono text-sm"
           >
             {/* Welcome message */}
             <div className="text-green-500/70 mb-2">
@@ -317,37 +307,37 @@ export default function DataPage() {
                 <span>{isAnalyzing ? 'AI анализ...' : 'Загрузка...'}</span>
               </div>
             )}
-          </div>
-          
-          {/* Input line */}
-          <div className="flex items-center gap-2 font-mono">
-            <span className="text-green-500">{'>'}</span>
-            <div className="relative flex-1">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full bg-transparent outline-none caret-transparent font-mono text-green-400"
-                autoComplete="off"
-                spellCheck={false}
-                disabled={isRunning || isAnalyzing}
-                placeholder={isRunning || isAnalyzing ? 'Подождите...' : ''}
-              />
-              {/* Block cursor */}
-              <span 
-                className={`absolute top-0 text-green-500 ${showCursor && !isRunning && !isAnalyzing ? 'opacity-100' : 'opacity-0'}`}
-                style={{ left: `${input.length}ch` }}
-              >
-                █
-              </span>
+            
+            {/* Input line */}
+            <div className="flex items-center gap-2 mt-4">
+              <span className="text-green-500">{'>'}</span>
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full bg-transparent outline-none caret-transparent text-green-400"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={isRunning || isAnalyzing}
+                  placeholder={isRunning || isAnalyzing ? 'Подождите...' : ''}
+                />
+                {/* Block cursor */}
+                <span 
+                  className={`absolute top-0 text-green-500 ${showCursor && !isRunning && !isAnalyzing ? 'opacity-100' : 'opacity-0'}`}
+                  style={{ left: `${input.length}ch` }}
+                >
+                  █
+                </span>
+              </div>
             </div>
-          </div>
-          
-          {/* Hint */}
-          <div className="mt-3 text-green-500/40 font-mono text-xs">
-            Команды: start {'<board_id>'} | analyze | help | clear
+            
+            {/* Hint */}
+            <div className="mt-3 text-green-500/40 text-xs">
+              Команды: start {'<board_id>'} | analyze | help | clear
+            </div>
           </div>
         </ConsolePanel>
 
@@ -434,23 +424,6 @@ export default function DataPage() {
           ) : (
             <div className="font-mono text-sm text-gray-500">[ No data available ]</div>
           )}
-
-          {/* Raw JSON Toggle */}
-          <div className="mt-6 pt-4 border-t border-green-500/30">
-            <button
-              onClick={() => setShowRawJson(!showRawJson)}
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              [Toggle Raw JSON]
-            </button>
-            {showRawJson && (collectResponse || reportResponse) && (
-              <div className="mt-4 border border-green-500/50 p-4 overflow-auto max-h-96">
-                <pre className="font-mono text-xs text-green-500">
-                  {JSON.stringify({ collectResponse, reportResponse }, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
         </ConsolePanel>
 
         {/* Navigation to next step */}
