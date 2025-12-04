@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type {
   SprintReportParams,
@@ -13,6 +12,7 @@ import {
   ConsolePanel,
   ConsoleHeading,
   BackendStatus,
+  Breadcrumb,
 } from '@/components/console';
 import { SprintCard, VersionCard, AnalysisPanel } from '@/components/sprint';
 
@@ -219,13 +219,7 @@ export default function DataPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/" className="text-green-500 font-bold tracking-tight hover:text-green-300 transition-colors">
-              ezreport
-            </Link>
-            <span className="text-green-500/50">/</span>
-            <span className="text-green-500 font-mono text-sm">Data</span>
-          </div>
+          <Breadcrumb items={[{ label: 'data' }]} />
           <ConsoleHeading level={1}>
             [DATA] Sprint Data Collection
           </ConsoleHeading>

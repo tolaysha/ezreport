@@ -7,6 +7,7 @@ import {
   ConsolePanel,
   ConsoleHeading,
   ConsoleButton,
+  Breadcrumb,
 } from '@/components/console';
 
 // =============================================================================
@@ -295,37 +296,11 @@ export default function ReportPage() {
     <div className="min-h-screen bg-black p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8 border-b border-green-500 pb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Link
-              href="/"
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              [HOME]
-            </Link>
-            <span className="text-green-500/50">/</span>
-            <Link
-              href="/data"
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              Data
-            </Link>
-            <span className="text-green-500/50">/</span>
-            <Link
-              href="/analyse"
-              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              Analyse
-            </Link>
-            <span className="text-green-500/50">/</span>
-            <span className="text-green-500 font-mono text-sm">Report</span>
-          </div>
-          <ConsoleHeading level={1} className="mb-2">
-            [REPORT] Partner Sync Report
+        <div className="mb-8">
+          <Breadcrumb items={[{ label: 'data', href: '/data' }, { label: 'report' }]} />
+          <ConsoleHeading level={1}>
+            Partner Sync Report
           </ConsoleHeading>
-          <p className="text-green-500 font-mono text-sm opacity-80">
-            Готовый отчёт для партнёров в формате Markdown
-          </p>
         </div>
 
         {error && (

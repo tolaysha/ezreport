@@ -56,9 +56,7 @@ export default function Home() {
       <div className="text-center">
         {/* Logo */}
         <h1 
-          className={`text-6xl md:text-8xl font-bold mb-16 tracking-tight transition-all duration-500 ${
-            success ? 'text-green-400' : error ? 'text-red-500' : 'text-zinc-700'
-          }`}
+          className="group text-6xl md:text-8xl font-bold mb-16 tracking-tight cursor-default"
           style={{
             textShadow: success
               ? '0 0 20px rgba(34, 197, 94, 1), 0 0 40px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.6), 0 0 100px rgba(34, 197, 94, 0.4)'
@@ -67,7 +65,12 @@ export default function Home() {
               : 'none',
           }}
         >
-          ezreport
+          <span className={`transition-colors duration-500 ${
+            success ? 'text-green-400' : error ? 'text-red-500' : 'text-green-800 group-hover:text-zinc-700'
+          }`}>ez</span>
+          <span className={`transition-colors duration-500 ${
+            success ? 'text-green-400' : error ? 'text-red-500' : 'text-zinc-700 group-hover:text-green-800'
+          }`}>report</span>
         </h1>
 
         {/* Terminal input */}
