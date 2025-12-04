@@ -176,68 +176,68 @@ function generateMockSprintInfo(sprintNameOrId: string): SprintInfo {
   return {
     id: 12345,
     name: sprintNameOrId,
-    number: numberMatch?.[1] ?? '4',
-    startDate: '17 ноября 2025',
-    endDate: '28 ноября 2025',
-    goal: 'Реализация основного пользовательского сценария и подготовка демо для партнёров',
+    number: numberMatch?.[1] ?? '6',
+    startDate: '1 декабря 2025',
+    endDate: '12 декабря 2025',
+    goal: 'Завершение интеграции с партнёрской системой и подготовка к закрытому бета-тестированию',
   };
 }
 
 function generateMockIssues(): SprintIssue[] {
   return [
     {
-      key: 'PROJ-101',
-      summary: 'Реализовать основной пользовательский сценарий',
+      key: 'PROJ-111',
+      summary: 'Интеграция с партнёрской системой аналитики',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 8,
-      assignee: 'Иван Петров',
-      artifact: 'https://figma.com/demo-scenario',
+      assignee: 'Алексей Козлов',
+      artifact: 'https://loom.com/partner-integration-demo',
     },
     {
-      key: 'PROJ-102',
-      summary: 'Улучшить производительность главной страницы',
+      key: 'PROJ-112',
+      summary: 'Реализовать систему уведомлений в реальном времени',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 5,
-      assignee: 'Мария Сидорова',
-      artifact: null,
-    },
-    {
-      key: 'PROJ-103',
-      summary: 'Добавить систему уведомлений',
-      status: 'Done',
-      statusCategory: 'done',
-      storyPoints: 3,
       assignee: 'Иван Петров',
       artifact: 'https://loom.com/notifications-demo',
     },
     {
-      key: 'PROJ-104',
-      summary: 'Интеграция с внешней системой',
-      status: 'In Progress',
-      statusCategory: 'indeterminate',
-      storyPoints: 8,
-      assignee: 'Алексей Козлов',
+      key: 'PROJ-113',
+      summary: 'Обновить документацию API для партнёров',
+      status: 'Done',
+      statusCategory: 'done',
+      storyPoints: 3,
+      assignee: 'Мария Сидорова',
       artifact: null,
     },
     {
-      key: 'PROJ-105',
-      summary: 'Расширенный отчёт для администраторов',
+      key: 'PROJ-114',
+      summary: 'Подготовить тестовые сценарии для бета-тестирования',
+      status: 'In Progress',
+      statusCategory: 'indeterminate',
+      storyPoints: 5,
+      assignee: 'Иван Петров',
+      artifact: null,
+    },
+    {
+      key: 'PROJ-115',
+      summary: 'Настроить мониторинг для продакшн-окружения',
       status: 'To Do',
       statusCategory: 'new',
-      storyPoints: 5,
+      storyPoints: 3,
       assignee: null,
       artifact: null,
     },
     {
-      key: 'PROJ-106',
-      summary: 'Обновить дизайн личного кабинета',
+      key: 'PROJ-116',
+      summary: 'Оптимизировать запросы к базе данных',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 5,
-      assignee: 'Мария Сидорова',
-      artifact: 'https://figma.com/cabinet-redesign',
+      assignee: 'Алексей Козлов',
+      artifact: null,
     },
   ];
 }
@@ -321,15 +321,19 @@ function generateMockPartnerReadiness(): PartnerReadinessAssessment {
 export async function collectSprintData(
   params: CollectSprintDataParams,
 ): Promise<CollectedSprintData> {
-  const { sprintNameOrId, versionMeta } = params;
+  const { sprintNameOrId, versionMeta, mockMode } = params;
 
   let sprintInfo: SprintInfo;
   let issues: SprintIssue[];
 
-  if (IS_MOCK || !isJiraConfigured()) {
-    logger.info('[MOCK] Using mock sprint data');
+  // Only use mock data if explicitly requested via mockMode parameter
+  if (mockMode === true) {
+    logger.info('[MOCK] Using mock sprint data (explicitly requested)');
     sprintInfo = generateMockSprintInfo(sprintNameOrId);
     issues = generateMockIssues();
+  } else if (!isJiraConfigured()) {
+    // Jira not configured - throw error instead of falling back to mock
+    throw new Error('Jira не настроен. Укажите JIRA_BASE_URL, JIRA_EMAIL и JIRA_API_TOKEN в .env файле.');
   } else {
     logger.info('Fetching sprint data from Jira...');
     const sprintData = await jiraClient.getSprintData(sprintNameOrId);

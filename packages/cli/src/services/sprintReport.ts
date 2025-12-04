@@ -93,58 +93,58 @@ function extractSprintNumber(sprintName: string): string {
 function generateMockIssues(): SprintIssue[] {
   return [
     {
-      key: 'PROJ-101',
-      summary: 'Реализовать основной пользовательский сценарий',
+      key: 'PROJ-111',
+      summary: 'Интеграция с партнёрской системой аналитики',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 8,
-      assignee: 'Иван Петров',
-      artifact: 'https://figma.com/demo-scenario',
+      assignee: 'Алексей Козлов',
+      artifact: 'https://loom.com/partner-integration-demo',
     },
     {
-      key: 'PROJ-102',
-      summary: 'Улучшить производительность главной страницы',
+      key: 'PROJ-112',
+      summary: 'Реализовать систему уведомлений в реальном времени',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 5,
-      assignee: 'Мария Сидорова',
-      artifact: null,
-    },
-    {
-      key: 'PROJ-103',
-      summary: 'Добавить систему уведомлений',
-      status: 'Done',
-      statusCategory: 'done',
-      storyPoints: 3,
       assignee: 'Иван Петров',
       artifact: 'https://loom.com/notifications-demo',
     },
     {
-      key: 'PROJ-104',
-      summary: 'Интеграция с внешней системой',
-      status: 'In Progress',
-      statusCategory: 'indeterminate',
-      storyPoints: 8,
-      assignee: 'Алексей Козлов',
+      key: 'PROJ-113',
+      summary: 'Обновить документацию API для партнёров',
+      status: 'Done',
+      statusCategory: 'done',
+      storyPoints: 3,
+      assignee: 'Мария Сидорова',
       artifact: null,
     },
     {
-      key: 'PROJ-105',
-      summary: 'Расширенный отчёт для администраторов',
+      key: 'PROJ-114',
+      summary: 'Подготовить тестовые сценарии для бета-тестирования',
+      status: 'In Progress',
+      statusCategory: 'indeterminate',
+      storyPoints: 5,
+      assignee: 'Иван Петров',
+      artifact: null,
+    },
+    {
+      key: 'PROJ-115',
+      summary: 'Настроить мониторинг для продакшн-окружения',
       status: 'To Do',
       statusCategory: 'new',
-      storyPoints: 5,
+      storyPoints: 3,
       assignee: null,
       artifact: null,
     },
     {
-      key: 'PROJ-106',
-      summary: 'Обновить дизайн личного кабинета',
+      key: 'PROJ-116',
+      summary: 'Оптимизировать запросы к базе данных',
       status: 'Done',
       statusCategory: 'done',
       storyPoints: 5,
-      assignee: 'Мария Сидорова',
-      artifact: 'https://figma.com/cabinet-redesign',
+      assignee: 'Алексей Козлов',
+      artifact: null,
     },
   ];
 }
@@ -180,9 +180,9 @@ export async function generateSprintReport(
       logger.info('[MOCK] Step 1: Using mock sprint data...');
       issues = generateMockIssues();
       sprintName = sprintNameOrId;
-      startDate = '17 Ноября 2025';
-      endDate = '28 Ноября 2025';
-      sprintGoal = 'Реализация основного пользовательского сценария';
+      startDate = '1 Декабря 2025';
+      endDate = '12 Декабря 2025';
+      sprintGoal = 'Завершение интеграции с партнёрской системой и подготовка к закрытому бета-тестированию';
     } else {
       logger.info('Step 1: Fetching sprint data from Jira...');
       const sprintData = await jiraClient.getSprintData(sprintNameOrId);
@@ -287,61 +287,71 @@ function generateMockReportForTestMode(
       number: '1',
       deadline: '29 Марта 2026',
       goal: 'Запуск MVP продукта с базовым функционалом для первых пользователей.',
-      progressPercent: 35,
+      progressPercent: 45,
     },
     sprint: {
       number: sprintNumber,
-      startDate: '17 Ноября 2025',
-      endDate: '28 Ноября 2025',
-      goal: 'Реализация основного пользовательского сценария и подготовка демо для партнёров.',
+      startDate: '1 Декабря 2025',
+      endDate: '12 Декабря 2025',
+      goal: 'Завершение интеграции с партнёрской системой и подготовка к закрытому бета-тестированию.',
       progressPercent,
     },
-    overview: `В этом спринте команда сфокусировалась на реализации ключевого пользовательского сценария. Мы успешно завершили основную часть запланированных задач, что позволило нам приблизиться к целям версии.
+    overview: `В этом спринте команда сфокусировалась на завершении интеграции с партнёрской системой и подготовке к бета-тестированию. Мы успешно завершили основную часть запланированных задач, что позволило нам приблизиться к целям версии.
 
-Главным достижением стала возможность для пользователей полноценно работать с основным функционалом продукта. Также была улучшена производительность системы, что положительно скажется на пользовательском опыте.
+Главным достижением стала полноценная интеграция с партнёрской системой аналитики, а также реализация системы уведомлений в реальном времени. Это значительно расширяет возможности продукта для конечных пользователей.
 
-Часть задач пришлось перенести на следующий спринт из-за необходимости более глубокой проработки требований совместно с партнёрами. Тем не менее, спринт можно считать успешным — мы достигли ${progressPercent}% выполнения запланированного объёма работ.`,
+Часть задач по тестированию и мониторингу пришлось перенести на следующий спринт из-за приоритизации интеграционных работ. Тем не менее, спринт можно считать успешным — мы достигли ${progressPercent}% выполнения запланированного объёма работ.`,
     notDone: [
       {
-        title: 'Интеграция с внешней системой уведомлений',
-        reason: 'Потребовалось дополнительное согласование формата данных с партнёром',
-        requiredForCompletion: 'Финализировать спецификацию и получить тестовый доступ к системе партнёра',
+        title: 'Подготовка тестовых сценариев для бета-тестирования',
+        reason: 'Приоритет был отдан завершению интеграции с партнёрской системой',
+        requiredForCompletion: 'Завершить разработку и провести ревью тестовых сценариев',
+        newDeadline: 'Спринт ' + nextSprintNumber,
+      },
+      {
+        title: 'Настройка мониторинга для продакшн-окружения',
+        reason: 'Требуется дополнительное время на настройку инфраструктуры',
+        requiredForCompletion: 'Настроить дашборды и алерты',
         newDeadline: 'Спринт ' + nextSprintNumber,
       },
     ],
     achievements: [
       {
-        title: 'Запущен основной пользовательский сценарий',
-        description: 'Пользователи теперь могут полностью пройти путь от регистрации до получения результата.',
+        title: 'Завершена интеграция с партнёрской системой аналитики',
+        description: 'Теперь данные автоматически синхронизируются с партнёрской платформой в реальном времени.',
       },
       {
-        title: 'Улучшена скорость работы системы',
-        description: 'Время отклика системы сократилось на 40%, что делает работу с продуктом более комфортной.',
+        title: 'Запущена система уведомлений в реальном времени',
+        description: 'Пользователи получают мгновенные уведомления о важных событиях в системе.',
+      },
+      {
+        title: 'Обновлена документация API',
+        description: 'Партнёры теперь имеют доступ к актуальной документации для интеграции.',
       },
     ],
     artifacts: [
       {
-        title: 'Демонстрация основного сценария работы',
-        description: 'Видеозапись полного пользовательского пути от входа в систему до получения результата.',
-        jiraLink: 'https://jira.example.com/browse/PROJ-123',
-        attachmentsNote: 'Видео (3 мин), скриншоты интерфейса',
+        title: 'Демонстрация интеграции с партнёрской системой',
+        description: 'Видеозапись процесса синхронизации данных с партнёрской платформой.',
+        jiraLink: 'https://jira.example.com/browse/PROJ-111',
+        attachmentsNote: 'Видео (5 мин), схема интеграции',
+      },
+      {
+        title: 'Демонстрация системы уведомлений',
+        description: 'Видео работы уведомлений в реальном времени.',
+        jiraLink: 'https://jira.example.com/browse/PROJ-112',
+        attachmentsNote: 'Видео (2 мин)',
       },
     ],
     nextSprint: {
       sprintNumber: nextSprintNumber,
-      goal: 'Завершить интеграцию с партнёрской системой и подготовить продукт к закрытому бета-тестированию.',
+      goal: 'Завершить подготовку к бета-тестированию и настроить мониторинг продакшн-окружения.',
     },
-    blockers: [
-      {
-        title: 'Ожидание доступа к тестовой среде партнёра',
-        description: 'Для завершения интеграции необходим доступ к тестовой среде, который пока не предоставлен.',
-        resolutionProposal: 'Эскалировать запрос через менеджера партнёрской программы.',
-      },
-    ],
+    blockers: [],
     pmQuestions: [
       {
-        title: 'Приоритет функционала уведомлений',
-        description: 'Предлагаем обсудить, насколько критично наличие уведомлений в реальном времени для первой версии продукта.',
+        title: 'Дата начала закрытого бета-тестирования',
+        description: 'Предлагаем согласовать точную дату начала бета-тестирования с учётом готовности всех компонентов.',
       },
     ],
   };
@@ -386,9 +396,9 @@ export async function runSprintReportTestMode(
   if (!isJiraConfigured()) {
     console.log('  [TEST] Jira not configured, using mock issues.');
     issues = generateMockIssues();
-    startDate = '17 Ноября 2025';
-    endDate = '28 Ноября 2025';
-    sprintGoal = 'Реализация основного пользовательского сценария';
+    startDate = '1 Декабря 2025';
+    endDate = '12 Декабря 2025';
+    sprintGoal = 'Завершение интеграции с партнёрской системой и подготовка к закрытому бета-тестированию';
   } else {
     try {
       logger.debug('[TEST] Attempting real Jira integration...');
@@ -429,9 +439,9 @@ export async function runSprintReportTestMode(
       console.log(`  [TEST] Jira integration failed: ${message}`);
       console.log('  [TEST] Falling back to mock issues.');
       issues = generateMockIssues();
-      startDate = '17 Ноября 2025';
-      endDate = '28 Ноября 2025';
-      sprintGoal = 'Реализация основного пользовательского сценария';
+      startDate = '1 Декабря 2025';
+      endDate = '12 Декабря 2025';
+      sprintGoal = 'Завершение интеграции с партнёрской системой и подготовка к закрытому бета-тестированию';
     }
   }
 

@@ -71,3 +71,41 @@ export interface SprintData {
   issues: ParsedJiraIssue[];
 }
 
+// =============================================================================
+// Project & Version Types
+// =============================================================================
+
+/**
+ * Jira project (simplified).
+ */
+export interface JiraProject {
+  id: string;
+  key: string;
+  name: string;
+}
+
+/**
+ * Jira project response from board endpoint.
+ */
+export interface JiraBoardProjectResponse {
+  values: JiraProject[];
+}
+
+/**
+ * Jira version (release).
+ * See: GET /rest/api/3/project/{projectIdOrKey}/versions
+ */
+export interface JiraVersion {
+  id: string;
+  name: string;
+  description?: string;
+  /** Release date in ISO format (YYYY-MM-DD) */
+  releaseDate?: string;
+  /** Whether this version has been released */
+  released: boolean;
+  /** Whether this version is archived */
+  archived: boolean;
+  /** Project ID this version belongs to */
+  projectId: number;
+}
+

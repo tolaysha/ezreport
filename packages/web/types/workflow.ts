@@ -59,6 +59,93 @@ export interface NotionPageResult {
   url?: string;
 }
 
+// =============================================================================
+// Basic Board Sprint Data Types (Step 1 - Two Sprint Cards)
+// =============================================================================
+
+export interface SprintMeta {
+  id: string;
+  name: string;
+  state: string;
+  startDate?: string;
+  endDate?: string;
+  goal?: string;
+  goalIsGenerated?: boolean;
+}
+
+export interface SprintIssue {
+  key: string;
+  summary: string;
+  status: string;
+  statusCategory: string;
+  storyPoints: number | null;
+  assignee: string | null;
+  artifact: string | null;
+}
+
+export type GoalMatchLevel = 'strong' | 'medium' | 'weak' | 'unknown';
+export type AlignmentLevel = 'aligned' | 'partial' | 'misaligned' | 'unknown';
+
+export interface SprintCardData {
+  sprint: SprintMeta;
+  issues: SprintIssue[];
+  goalMatchLevel: GoalMatchLevel;
+  goalMatchComment: string;
+  recommendedArtifactIssues: SprintIssue[];
+}
+
+export interface VersionMeta {
+  id: string;
+  name: string;
+  description?: string;
+  releaseDate?: string;
+  released: boolean;
+  progressPercent?: number;
+}
+
+export interface VersionSprintAlignment {
+  level: AlignmentLevel;
+  comment: string;
+  recommendations?: string[];
+}
+
+export interface SprintTasksAlignment {
+  level: AlignmentLevel;
+  comment: string;
+  directlyRelatedPercent?: number;
+  unrelatedTasks?: string[];
+}
+
+export interface DemoRecommendation {
+  issueKey: string;
+  summary: string;
+  wowFactor: string;
+  demoComplexity: number;
+  suggestedFormat: 'video' | 'screenshot' | 'live' | 'slides';
+}
+
+export interface StrategicAnalysis {
+  versionSprintAlignment: VersionSprintAlignment;
+  sprintTasksAlignment: SprintTasksAlignment;
+  overallScore: number;
+  summary: string;
+  demoRecommendations?: DemoRecommendation[];
+}
+
+export interface BasicBoardSprintData {
+  boardId: string;
+  projectKey?: string;
+  projectName?: string;
+  activeVersion?: VersionMeta;
+  previousSprint?: SprintCardData;
+  currentSprint?: SprintCardData;
+  analysis?: StrategicAnalysis;
+  availability: {
+    hasPreviousSprint: boolean;
+    hasCurrentSprint: boolean;
+  };
+}
+
 /** Debug info for a single report block (used in Stage 2 UI) */
 export interface SprintReportBlockDebug {
   blockId: string;
@@ -76,6 +163,8 @@ export interface SprintReportWorkflowResult {
   notionPage?: NotionPageResult | null;
   /** Optional debug info for block-by-block generation UI */
   blocksDebug?: SprintReportBlockDebug[];
+  /** Basic board sprint data for Step 1 - two sprint cards */
+  basicBoardData?: BasicBoardSprintData | null;
 }
 
 export interface RunStepResponse {

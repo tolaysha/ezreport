@@ -2,97 +2,74 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
-import { SprintReportWorkflowParams, RunStepResponse } from '@/types/workflow';
+import { RunStepResponse } from '@/types/workflow';
 import { runStep } from '@/lib/apiClient';
-import { REPORT_BLOCKS, ReportBlockConfig } from '@/lib/blocksConfig';
 import {
   ConsolePanel,
   ConsoleHeading,
   ConsoleButton,
-  ConsoleInput,
-  ConsoleCheckbox,
-  BackendStatus,
 } from '@/components/console';
-import { Accordion } from '@/components/Accordion';
+
+// =============================================================================
+// Report Structure Definition
+// =============================================================================
+
+interface StructureItem {
+  id: string;
+  label: string;
+  level: number;
+}
+
+const REPORT_STRUCTURE: StructureItem[] = [
+  { id: 'meta', label: '0. META', level: 0 },
+  { id: 'meta-project', label: 'projectName', level: 1 },
+  { id: 'meta-version', label: 'version', level: 1 },
+  { id: 'meta-sprint', label: 'sprint', level: 1 },
+  { id: 'meta-next', label: 'nextSprint', level: 1 },
+
+  { id: 'version', label: '1. VERSION BLOCK', level: 0 },
+  { id: 'version-callout', label: 'Version Callout', level: 1 },
+
+  { id: 'sprint', label: '2. SPRINT BLOCK', level: 0 },
+  { id: 'sprint-callout', label: 'Sprint Callout', level: 1 },
+
+  { id: 'result', label: '3. SPRINT RESULT SECTION', level: 0 },
+  { id: 'result-timeline', label: '3.1 Sprint Timeline', level: 1 },
+  { id: 'result-overview', label: '3.2 Sprint Overview', level: 1 },
+  { id: 'result-achievements', label: '3.3 Achievements', level: 1 },
+  { id: 'result-notdone', label: '3.4 Not Done', level: 1 },
+
+  { id: 'artifacts', label: '4. ARTIFACTS SECTION', level: 0 },
+  { id: 'artifacts-item', label: '4.1 Artifact Item (repeatable)', level: 1 },
+
+  { id: 'next', label: '5. NEXT SPRINT SECTION', level: 0 },
+  { id: 'next-goal', label: '5.1 Next Sprint Goal', level: 1 },
+  { id: 'next-timeline', label: '5.2 Next Sprint Timeline', level: 1 },
+  { id: 'next-blockers', label: '5.3 Blockers', level: 1 },
+
+  { id: 'pm', label: '6. PM QUESTIONS SECTION', level: 0 },
+  { id: 'pm-item', label: '6.1 Question Item (repeatable)', level: 1 },
+];
+
+// =============================================================================
+// Main Page Component
+// =============================================================================
 
 export default function Stage2Page() {
-  const [collectResponse, setCollectResponse] = useState<RunStepResponse | null>(
-    null
-  );
-  const [generateResponse, setGenerateResponse] =
-    useState<RunStepResponse | null>(null);
+  const [response, setResponse] = useState<RunStepResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [runningStep, setRunningStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showRawJson, setShowRawJson] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
 
-  // Form state - defaults for "toys" project
-  const [sprintId, setSprintId] = useState('');
-  const [sprintName, setSprintName] = useState('toys');
-  const [boardId, setBoardId] = useState('toys');
-  const [mockMode, setMockMode] = useState(true);
-  const [extraJson, setExtraJson] = useState('');
-  const [extraJsonError, setExtraJsonError] = useState('');
-  const [showExtraJson, setShowExtraJson] = useState(false);
-
-  const buildParams = (): SprintReportWorkflowParams | null => {
-    const params: SprintReportWorkflowParams = {
-      mockMode,
-    };
-
-    if (sprintId.trim()) params.sprintId = sprintId.trim();
-    if (sprintName.trim()) params.sprintName = sprintName.trim();
-    if (boardId.trim()) params.boardId = boardId.trim();
-
-    if (extraJson.trim()) {
-      try {
-        const parsed = JSON.parse(extraJson);
-        params.extra = parsed;
-        setExtraJsonError('');
-      } catch {
-        setExtraJsonError('Parse error: invalid JSON');
-        return null;
-      }
-    }
-
-    return params;
-  };
-
-  const handleRunCollect = async () => {
-    const params = buildParams();
-    if (!params) return;
-
+  const handleGenerate = async () => {
     setIsRunning(true);
-    setRunningStep('collect');
     setError(null);
 
     try {
-      const result = await runStep('collect', params);
-      setCollectResponse(result);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Collect step failed:', err);
-    } finally {
-      setIsRunning(false);
-      setRunningStep(null);
-    }
-  };
-
-  const handleRunGenerate = async () => {
-    const params = buildParams();
-    if (!params) return;
-
-    setIsRunning(true);
-    setRunningStep('generate');
-    setError(null);
-
-    try {
-      const result = await runStep('generate', params);
-      setGenerateResponse(result);
+      const result = await runStep('generate', {
+        mockMode: false,
+        boardId: '133',
+      });
+      setResponse(result);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
@@ -100,22 +77,14 @@ export default function Stage2Page() {
       console.error('Generate step failed:', err);
     } finally {
       setIsRunning(false);
-      setRunningStep(null);
     }
   };
 
-  const handleBlockGo = async () => {
-    // For now, all blocks trigger the same generate call
-    await handleRunGenerate();
-  };
-
-  // Use the latest result for display (generate takes priority)
-  const latestResult = generateResponse?.result || collectResponse?.result;
-  const latestResponse = generateResponse || collectResponse;
+  const report = response?.result?.report;
 
   return (
     <div className="min-h-screen bg-black p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 border-b border-green-500 pb-4">
           <div className="flex items-center gap-2 mb-2">
@@ -126,14 +95,20 @@ export default function Stage2Page() {
               [HOME]
             </Link>
             <span className="text-green-500/50">/</span>
+            <Link
+              href="/stage-1"
+              className="text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
+            >
+              Stage 1
+            </Link>
+            <span className="text-green-500/50">/</span>
             <span className="text-green-500 font-mono text-sm">Stage 2</span>
           </div>
           <ConsoleHeading level={1} className="mb-2">
-            [STAGE 2] Генерация отчёта по блокам
+            [STAGE 2] Генерация отчёта
           </ConsoleHeading>
           <p className="text-green-500 font-mono text-sm opacity-80">
-            Пошаговая генерация каждого блока отчёта с просмотром промптов и
-            входных данных
+            Генерация полного отчёта по данным спринта одним запросом
           </p>
         </div>
 
@@ -143,182 +118,168 @@ export default function Stage2Page() {
           </div>
         )}
 
-        {/* Control Panel */}
-        <ConsolePanel className="mb-8">
-          <ConsoleHeading level={2} className="mb-4">
-            [ ПАРАМЕТРЫ ]
-          </ConsoleHeading>
-
-          <BackendStatus />
-
-          <div className="space-y-4 mb-6">
-            <ConsoleInput
-              label="Sprint ID:"
-              value={sprintId}
-              onChange={setSprintId}
-              disabled={isRunning}
-              placeholder="e.g., 12345"
-            />
-
-            <ConsoleInput
-              label="Sprint Name:"
-              value={sprintName}
-              onChange={setSprintName}
-              disabled={isRunning}
-              placeholder="e.g., Sprint 42"
-            />
-
-            <ConsoleInput
-              label="Board ID:"
-              value={boardId}
-              onChange={setBoardId}
-              disabled={isRunning}
-              placeholder="e.g., board-123"
-            />
-
-            <ConsoleCheckbox
-              label="MOCK_MODE"
-              checked={mockMode}
-              onChange={setMockMode}
-              disabled={isRunning}
-            />
-
-            <div>
-              <button
-                onClick={() => setShowExtraJson(!showExtraJson)}
-                disabled={isRunning}
-                className="flex items-center text-green-500 font-mono text-sm hover:text-green-300 transition-colors disabled:opacity-50"
-              >
-                <ChevronRight
-                  className={`w-4 h-4 mr-1 transition-transform ${showExtraJson ? 'rotate-90' : ''}`}
-                />
-                Extra JSON params
-              </button>
-              {showExtraJson && (
-                <div className="mt-2">
-                  <ConsoleInput
-                    label=""
-                    value={extraJson}
-                    onChange={setExtraJson}
-                    disabled={isRunning}
-                    placeholder='{"key": "value"}'
-                    type="textarea"
-                  />
-                  {extraJsonError && (
-                    <div className="text-red-500 font-mono text-xs mt-1">
-                      {extraJsonError}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isRunning && (
-            <div className="mb-4 text-green-500 font-mono text-sm animate-pulse">
-              {runningStep === 'collect'
-                ? '[ RUNNING STEP 1 (COLLECT)... ]'
-                : '[ RUNNING GENERATE... ]'}
-            </div>
+        {/* Generate Button */}
+        <div className="mb-8 flex items-center gap-4">
+          <ConsoleButton onClick={handleGenerate} disabled={isRunning}>
+            {isRunning ? '[ GENERATING... ]' : '[GENERATE REPORT]'}
+          </ConsoleButton>
+          {response && (
+            <span className="text-green-500/70 font-mono text-sm">
+              ✓ Отчёт сгенерирован
+            </span>
           )}
-
-          <div className="flex flex-wrap gap-3">
-            <ConsoleButton
-              onClick={handleRunCollect}
-              disabled={isRunning}
-              variant="secondary"
-            >
-              [RUN STEP 1 FIRST]
-            </ConsoleButton>
-            <ConsoleButton onClick={handleRunGenerate} disabled={isRunning}>
-              [RUN GENERATION FOR ALL BLOCKS]
-            </ConsoleButton>
-          </div>
-        </ConsolePanel>
-
-        {/* Block Cards */}
-        <div className="mb-8">
-          <ConsoleHeading level={2} className="mb-4">
-            [ БЛОКИ ОТЧЁТА ]
-          </ConsoleHeading>
-
-          <div className="space-y-4">
-            {REPORT_BLOCKS.map((block) => (
-              <BlockCard
-                key={block.id}
-                block={block}
-                result={latestResult}
-                onGo={handleBlockGo}
-                isRunning={isRunning}
-              />
-            ))}
-          </div>
         </div>
 
-        {/* Logs & Raw JSON */}
-        <ConsolePanel>
-          <ConsoleHeading level={2} className="mb-4">
-            [ ОТЛАДКА ]
-          </ConsoleHeading>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Structure */}
+          <ConsolePanel>
+            <ConsoleHeading level={2} className="mb-4">
+              [ 🧩 STRUCTURE (SKELETON) ]
+            </ConsoleHeading>
 
-          {/* Logs */}
-          <div className="mb-4">
-            <button
-              onClick={() => setShowLogs(!showLogs)}
-              className="flex items-center text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              <ChevronRight
-                className={`w-4 h-4 mr-1 transition-transform ${showLogs ? 'rotate-90' : ''}`}
-              />
-              Logs
-            </button>
-            {showLogs && latestResponse?.logs && latestResponse.logs.length > 0 && (
-              <div className="mt-2 border border-green-500/50 p-4 max-h-60 overflow-auto">
-                <div className="space-y-1">
-                  {latestResponse.logs.map((log, idx) => (
-                    <div key={idx} className="font-mono text-xs text-green-500">
-                      {log}
-                    </div>
-                  ))}
+            <div className="space-y-1">
+              {REPORT_STRUCTURE.map((item) => (
+                <div
+                  key={item.id}
+                  className={`font-mono text-sm ${
+                    item.level === 0
+                      ? 'text-green-400 font-bold mt-3 first:mt-0'
+                      : 'text-green-500/70 pl-4'
+                  }`}
+                >
+                  {item.level === 1 && (
+                    <span className="text-green-500/40 mr-2">└─</span>
+                  )}
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </ConsolePanel>
+
+          {/* Right: Preview */}
+          <ConsolePanel>
+            <ConsoleHeading level={2} className="mb-4">
+              [ 📄 REPORT PREVIEW ]
+            </ConsoleHeading>
+
+            {!report ? (
+              <div className="text-green-500/50 font-mono text-sm">
+                [ Нажмите GENERATE REPORT для генерации ]
+              </div>
+            ) : !report.sprint && !report.overview ? (
+              <div className="border border-yellow-500/50 bg-yellow-500/5 p-4">
+                <div className="text-yellow-500 font-mono text-sm mb-2">
+                  ⚠️ Отчёт не сгенерирован
+                </div>
+                <div className="text-yellow-500/70 font-mono text-xs space-y-1">
+                  <p>Возможные причины:</p>
+                  <ul className="list-disc list-inside pl-2">
+                    <li>Jira не настроен (проверьте .env файл)</li>
+                    <li>Нет данных спринта для генерации</li>
+                    <li>OpenAI не настроен</li>
+                  </ul>
+                  <p className="mt-2">Сначала выполните Stage 1 для сбора данных.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Version Callout */}
+                <div className="border border-green-500/50 p-3 bg-green-500/5">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    🚀 VERSION CALLOUT
+                  </div>
+                  <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
+                    {report.version || '—'}
+                  </pre>
+                </div>
+
+                {/* Sprint Callout */}
+                <div className="border border-green-500/50 p-3 bg-green-500/5">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    ✅ SPRINT CALLOUT
+                  </div>
+                  <pre className="font-mono text-xs text-green-500 whitespace-pre-wrap">
+                    {report.sprint || '—'}
+                  </pre>
+                </div>
+
+                {/* Overview */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    3.2 OVERVIEW
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.overview || '—'}
+                  </pre>
+                </div>
+
+                {/* Achievements */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    3.3 ACHIEVEMENTS
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.achievements || '—'}
+                  </pre>
+                </div>
+
+                {/* Not Done */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    3.4 NOT DONE
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.notDone || 'Всё запланированное реализовано.'}
+                  </pre>
+                </div>
+
+                {/* Artifacts */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    4. ARTIFACTS
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.artifacts || 'Нет артефактов.'}
+                  </pre>
+                </div>
+
+                {/* Next Sprint */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    5. NEXT SPRINT
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.nextSprint || '—'}
+                  </pre>
+                </div>
+
+                {/* Blockers */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    5.3 BLOCKERS
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.blockers || 'Нет'}
+                  </pre>
+                </div>
+
+                {/* PM Questions */}
+                <div className="border border-green-500/30 p-3">
+                  <div className="text-green-400 font-mono text-xs mb-1">
+                    6. PM QUESTIONS
+                  </div>
+                  <pre className="font-mono text-xs text-green-500/90 whitespace-pre-wrap">
+                    {report.pmQuestions || 'Нет'}
+                  </pre>
                 </div>
               </div>
             )}
-            {showLogs &&
-              (!latestResponse?.logs || latestResponse.logs.length === 0) && (
-                <div className="mt-2 text-green-500/50 font-mono text-sm">
-                  [ No logs ]
-                </div>
-              )}
-          </div>
-
-          {/* Raw JSON */}
-          <div>
-            <button
-              onClick={() => setShowRawJson(!showRawJson)}
-              className="flex items-center text-green-500 font-mono text-sm hover:text-green-300 transition-colors"
-            >
-              <ChevronRight
-                className={`w-4 h-4 mr-1 transition-transform ${showRawJson ? 'rotate-90' : ''}`}
-              />
-              Raw JSON
-            </button>
-            {showRawJson && latestResponse && (
-              <div className="mt-2 border border-green-500/50 p-4 overflow-auto max-h-96">
-                <pre className="font-mono text-xs text-green-500">
-                  {JSON.stringify(latestResponse, null, 2)}
-                </pre>
-              </div>
-            )}
-            {showRawJson && !latestResponse && (
-              <div className="mt-2 text-green-500/50 font-mono text-sm">
-                [ No data ]
-              </div>
-            )}
-          </div>
-        </ConsolePanel>
+          </ConsolePanel>
+        </div>
 
         {/* Navigation to Stage 3 */}
-        {latestResult?.report && (
+        {report && (
           <div className="mt-8 text-center">
             <Link
               href="/stage-3"
@@ -332,65 +293,3 @@ export default function Stage2Page() {
     </div>
   );
 }
-
-interface BlockCardProps {
-  block: ReportBlockConfig;
-  result: RunStepResponse['result'] | undefined;
-  onGo: () => void;
-  isRunning: boolean;
-}
-
-function BlockCard({ block, result, onGo, isRunning }: BlockCardProps) {
-  const inputPreview = block.getInputPreview(result ?? null);
-  const blockText = block.getBlockText(result?.report ?? null);
-
-  return (
-    <Accordion title={`[BLOCK] ${block.title}`}>
-      <div className="space-y-4">
-        {/* Description */}
-        <div className="text-green-500/70 font-mono text-sm">
-          {block.description}
-        </div>
-
-        {/* Prompt */}
-        <div>
-          <div className="text-green-400 font-mono text-xs mb-1">PROMPT:</div>
-          <pre className="font-mono text-xs text-green-500 bg-green-950/30 p-3 rounded whitespace-pre-wrap border border-green-500/30">
-            {block.promptTemplate}
-          </pre>
-        </div>
-
-        {/* Input Data Preview */}
-        <div>
-          <div className="text-green-400 font-mono text-xs mb-1">
-            INPUT DATA (preview):
-          </div>
-          <pre className="font-mono text-xs text-green-500 bg-green-950/30 p-3 rounded whitespace-pre-wrap border border-green-500/30 max-h-40 overflow-auto">
-            {JSON.stringify(inputPreview, null, 2)}
-          </pre>
-        </div>
-
-        {/* Result */}
-        <div>
-          <div className="text-green-400 font-mono text-xs mb-1">RESULT:</div>
-          <pre className="font-mono text-xs text-green-500 bg-green-950/30 p-3 rounded whitespace-pre-wrap border border-green-500/30 max-h-60 overflow-auto">
-            {blockText || '<no data yet>'}
-          </pre>
-        </div>
-
-        {/* Go Button */}
-        <div className="pt-2">
-          <ConsoleButton
-            onClick={onGo}
-            disabled={isRunning}
-            variant="secondary"
-            className="text-sm px-3 py-2"
-          >
-            [Go] Сгенерировать
-          </ConsoleButton>
-        </div>
-      </div>
-    </Accordion>
-  );
-}
-

@@ -16,12 +16,16 @@ import {
   validateSprintData,
   validateSprintReport,
 } from './services/sprintReportWorkflow';
+import { collectBasicBoardSprintData } from './services/collectBasicBoardSprintData';
+import { JIRA_CONFIG } from './config';
+import { jiraClient } from './jira/client';
 import type {
   CollectedSprintData,
   SprintDataValidationResult,
   SprintReportWorkflowResult as CLIWorkflowResult,
 } from './services/workflowTypes';
-import type { SprintReportStructured } from './ai/types';
+import type { BasicBoardSprintData, SprintCardData } from './domain/BoardSprintSnapshot';
+import type { SprintReportStructured, SprintIssue } from './ai/types';
 import { logger } from './utils/logger';
 
 // =============================================================================
@@ -89,12 +93,99 @@ interface NotionPageResult {
   url?: string;
 }
 
+// =============================================================================
+// Types for Basic Board Sprint Data (Step 1)
+// =============================================================================
+
+interface SprintMetaWeb {
+  id: string;
+  name: string;
+  state: string;
+  startDate?: string;
+  endDate?: string;
+  goal?: string;
+  goalIsGenerated?: boolean;
+}
+
+interface SprintIssueWeb {
+  key: string;
+  summary: string;
+  status: string;
+  statusCategory: string;
+  storyPoints: number | null;
+  assignee: string | null;
+  artifact: string | null;
+}
+
+interface SprintCardDataWeb {
+  sprint: SprintMetaWeb;
+  issues: SprintIssueWeb[];
+  goalMatchLevel: 'strong' | 'medium' | 'weak' | 'unknown';
+  goalMatchComment: string;
+  recommendedArtifactIssues: SprintIssueWeb[];
+}
+
+interface VersionMetaWeb {
+  id: string;
+  name: string;
+  description?: string;
+  releaseDate?: string;
+  released: boolean;
+  progressPercent?: number;
+}
+
+type AlignmentLevelWeb = 'aligned' | 'partial' | 'misaligned' | 'unknown';
+
+interface VersionSprintAlignmentWeb {
+  level: AlignmentLevelWeb;
+  comment: string;
+  recommendations?: string[];
+}
+
+interface SprintTasksAlignmentWeb {
+  level: AlignmentLevelWeb;
+  comment: string;
+  directlyRelatedPercent?: number;
+  unrelatedTasks?: string[];
+}
+
+interface DemoRecommendationWeb {
+  issueKey: string;
+  summary: string;
+  wowFactor: string;
+  demoComplexity: number;
+  suggestedFormat: 'video' | 'screenshot' | 'live' | 'slides';
+}
+
+interface StrategicAnalysisWeb {
+  versionSprintAlignment: VersionSprintAlignmentWeb;
+  sprintTasksAlignment: SprintTasksAlignmentWeb;
+  overallScore: number;
+  summary: string;
+  demoRecommendations?: DemoRecommendationWeb[];
+}
+
+interface BasicBoardSprintDataWeb {
+  boardId: string;
+  projectKey?: string;
+  projectName?: string;
+  activeVersion?: VersionMetaWeb;
+  previousSprint?: SprintCardDataWeb;
+  currentSprint?: SprintCardDataWeb;
+  analysis?: StrategicAnalysisWeb;
+  availability: {
+    hasPreviousSprint: boolean;
+    hasCurrentSprint: boolean;
+  };
+}
+
 interface SprintReportWorkflowResultWeb {
   sprint?: SprintInfo;
   dataValidation?: SprintDataValidationResultWeb | null;
   report?: SprintReportStructuredWeb | null;
   reportValidation?: SprintReportValidationResultWeb | null;
   notionPage?: NotionPageResult | null;
+  basicBoardData?: BasicBoardSprintDataWeb | null;
 }
 
 interface RunStepResponse {
@@ -230,6 +321,87 @@ function convertCLIResult(cliResult: CLIWorkflowResult): SprintReportWorkflowRes
     notionPage: cliResult.notionPage
       ? { id: cliResult.notionPage.id, url: cliResult.notionPage.url }
       : null,
+    basicBoardData: cliResult.basicBoardData
+      ? convertBasicBoardSprintData(cliResult.basicBoardData)
+      : null,
+  };
+}
+
+// =============================================================================
+// Basic Board Sprint Data Converters
+// =============================================================================
+
+function convertSprintIssue(issue: SprintIssue): SprintIssueWeb {
+  return {
+    key: issue.key,
+    summary: issue.summary,
+    status: issue.status,
+    statusCategory: issue.statusCategory,
+    storyPoints: issue.storyPoints,
+    assignee: issue.assignee,
+    artifact: issue.artifact,
+  };
+}
+
+function convertSprintCardData(card: SprintCardData): SprintCardDataWeb {
+  return {
+    sprint: {
+      id: card.sprint.id,
+      name: card.sprint.name,
+      state: card.sprint.state,
+      startDate: card.sprint.startDate,
+      endDate: card.sprint.endDate,
+      goal: card.sprint.goal,
+      goalIsGenerated: card.sprint.goalIsGenerated,
+    },
+    issues: card.issues.map(convertSprintIssue),
+    goalMatchLevel: card.goalMatchLevel,
+    goalMatchComment: card.goalMatchComment,
+    recommendedArtifactIssues: card.recommendedArtifactIssues.map(convertSprintIssue),
+  };
+}
+
+function convertBasicBoardSprintData(data: BasicBoardSprintData): BasicBoardSprintDataWeb {
+  return {
+    boardId: data.boardId,
+    projectKey: data.projectKey,
+    projectName: data.projectName,
+    activeVersion: data.activeVersion ? {
+      id: data.activeVersion.id,
+      name: data.activeVersion.name,
+      description: data.activeVersion.description,
+      releaseDate: data.activeVersion.releaseDate,
+      released: data.activeVersion.released,
+      progressPercent: data.activeVersion.progressPercent,
+    } : undefined,
+    previousSprint: data.previousSprint ? convertSprintCardData(data.previousSprint) : undefined,
+    currentSprint: data.currentSprint ? convertSprintCardData(data.currentSprint) : undefined,
+    analysis: data.analysis ? {
+      versionSprintAlignment: {
+        level: data.analysis.versionSprintAlignment.level,
+        comment: data.analysis.versionSprintAlignment.comment,
+        recommendations: data.analysis.versionSprintAlignment.recommendations,
+      },
+      sprintTasksAlignment: {
+        level: data.analysis.sprintTasksAlignment.level,
+        comment: data.analysis.sprintTasksAlignment.comment,
+        directlyRelatedPercent: data.analysis.sprintTasksAlignment.directlyRelatedPercent,
+        unrelatedTasks: data.analysis.sprintTasksAlignment.unrelatedTasks,
+      },
+      overallScore: data.analysis.overallScore,
+      summary: data.analysis.summary,
+      demoRecommendations: data.analysis.demoRecommendations?.map(rec => ({
+        issueKey: rec.issueKey,
+        summary: rec.summary,
+        wowFactor: rec.wowFactor,
+        demoComplexity: rec.demoComplexity,
+        suggestedFormat: rec.suggestedFormat,
+      })),
+    } : undefined,
+    availability: {
+      hasPreviousSprint: data.availability.hasPreviousSprint,
+      hasCurrentSprint: data.availability.hasCurrentSprint,
+    },
   };
 }
 
@@ -240,12 +412,106 @@ function convertCLIResult(cliResult: CLIWorkflowResult): SprintReportWorkflowRes
 async function handleCollect(params: SprintReportWorkflowParams): Promise<SprintReportWorkflowResultWeb> {
   clearLogs();
   addLog('Starting data collection...');
+  addLog(`Mock mode: ${params.mockMode ? 'ON' : 'OFF'}`);
 
-  const sprintNameOrId = params.sprintName || params.sprintId || params.boardId || 'default';
+  // =========================================================================
+  // New Step 1: Collect basic board sprint data (if boardId is provided)
+  // =========================================================================
+  if (params.boardId) {
+    addLog(`Collecting basic board sprint data for board ${params.boardId}...`);
 
-  // Set mock mode via environment if requested
-  if (params.mockMode) {
-    process.env.MOCK_MODE = 'true';
+    try {
+      const basicBoardData = await collectBasicBoardSprintData({
+        boardId: params.boardId,
+        mockMode: params.mockMode ?? false,
+      });
+
+      const previousIssueCount = basicBoardData.previousSprint?.issues.length ?? 0;
+      const currentIssueCount = basicBoardData.currentSprint?.issues.length ?? 0;
+
+      addLog(`Previous sprint: ${basicBoardData.availability.hasPreviousSprint ? 'found' : 'not found'}`);
+      if (basicBoardData.previousSprint) {
+        addLog(`  - Name: ${basicBoardData.previousSprint.sprint.name}`);
+        addLog(`  - Issues: ${previousIssueCount}`);
+        addLog(`  - Goal match: ${basicBoardData.previousSprint.goalMatchLevel}`);
+      }
+
+      addLog(`Current sprint: ${basicBoardData.availability.hasCurrentSprint ? 'found' : 'not found'}`);
+      if (basicBoardData.currentSprint) {
+        addLog(`  - Name: ${basicBoardData.currentSprint.sprint.name}`);
+        addLog(`  - Issues: ${currentIssueCount}`);
+        addLog(`  - Goal match: ${basicBoardData.currentSprint.goalMatchLevel}`);
+      }
+
+      addLog('Data collection complete');
+
+      // Return the collected data (legacy collection skipped - not needed for Stage 1)
+      return {
+        sprint: basicBoardData.currentSprint ? {
+          id: basicBoardData.currentSprint.sprint.id,
+          name: basicBoardData.currentSprint.sprint.name,
+          goal: basicBoardData.currentSprint.sprint.goal,
+          startDate: basicBoardData.currentSprint.sprint.startDate,
+          endDate: basicBoardData.currentSprint.sprint.endDate,
+        } : undefined,
+        dataValidation: null,
+        report: null,
+        reportValidation: null,
+        notionPage: null,
+        basicBoardData: convertBasicBoardSprintData(basicBoardData),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`ERROR during board data collection: ${message}`);
+      
+      // Return error result
+      return {
+        sprint: undefined,
+        dataValidation: null,
+        report: null,
+        reportValidation: null,
+        notionPage: null,
+        basicBoardData: {
+          boardId: params.boardId,
+          previousSprint: undefined,
+          currentSprint: undefined,
+          availability: {
+            hasPreviousSprint: false,
+            hasCurrentSprint: false,
+          },
+        },
+      };
+    }
+  }
+
+  // =========================================================================
+  // Legacy Step 1: Collect by sprint name/id (backward compatibility)
+  // =========================================================================
+  let sprintNameOrId = params.sprintName || params.sprintId || '';
+
+  // If boardId is provided but basic collection failed, try to get active sprint
+  if (params.boardId && !sprintNameOrId) {
+    addLog(`Looking for active sprint on board ${params.boardId}...`);
+    
+    // Temporarily set the board ID in config
+    const originalBoardId = JIRA_CONFIG.boardId;
+    (JIRA_CONFIG as any).boardId = params.boardId;
+    
+    try {
+      const recentSprints = await jiraClient.getRecentSprints();
+      sprintNameOrId = recentSprints.current.name;
+      addLog(`Found active sprint: ${sprintNameOrId}`);
+    } catch (error) {
+      addLog(`Failed to get active sprint from board, using board ID as sprint name`);
+      sprintNameOrId = params.boardId;
+    } finally {
+      // Restore original board ID
+      (JIRA_CONFIG as any).boardId = originalBoardId;
+    }
+  }
+
+  if (!sprintNameOrId) {
+    sprintNameOrId = 'default';
   }
 
   try {
@@ -254,6 +520,7 @@ async function handleCollect(params: SprintReportWorkflowParams): Promise<Sprint
     lastCollectedData = await collectSprintData({
       sprintNameOrId,
       versionMeta: params.extra,
+      mockMode: params.mockMode ?? false,
     } as any);
     addLog(`Collected ${lastCollectedData.issues.length} issues`);
 

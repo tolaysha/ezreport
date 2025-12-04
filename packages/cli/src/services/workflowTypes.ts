@@ -9,6 +9,7 @@ import type {
   SprintReportStructured,
   VersionMeta,
 } from '../ai/types';
+import type { BasicBoardSprintData } from '../domain/BoardSprintSnapshot';
 import type { SupportedLanguage } from '../i18n/language';
 
 // =============================================================================
@@ -39,7 +40,9 @@ export interface CollectSprintDataParams {
   sprintNameOrId: string;
   boardId?: string;
   versionMeta?: Partial<VersionMeta>;
-  language: SupportedLanguage;
+  language?: SupportedLanguage;
+  /** If true, use mock data instead of real Jira data */
+  mockMode?: boolean;
 }
 
 /**
@@ -174,6 +177,13 @@ export interface SprintReportWorkflowResult {
   notionPage: NotionPageResult | null;
   error?: string;
   abortReason?: string;
+
+  /**
+   * Basic board sprint data for Step 1.
+   * Contains previous (closed) and current (active) sprint cards
+   * for the web UI to display.
+   */
+  basicBoardData?: BasicBoardSprintData;
 }
 
 // =============================================================================

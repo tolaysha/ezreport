@@ -125,6 +125,8 @@ The HTTP server (`packages/cli/src/server.ts`) exposes:
   - `step`: `"collect"` | `"generate"` | `"validate"` | `"full"`
   - `params`: `{ boardId?, sprintId?, sprintName?, mockMode?, extra? }`
 
+**Подробная документация:** см. [docs/api-contracts.md](./api-contracts.md)
+
 ### Running the Web Console
 
 ```bash

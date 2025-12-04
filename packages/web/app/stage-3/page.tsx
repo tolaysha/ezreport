@@ -21,11 +21,11 @@ export default function Stage3Page() {
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
 
-  // Form state - defaults for "toys" project
+  // Form state - defaults for board 133
   const [sprintId, setSprintId] = useState('');
-  const [sprintName, setSprintName] = useState('toys');
-  const [boardId, setBoardId] = useState('toys');
-  const [mockMode, setMockMode] = useState(true);
+  const [sprintName, setSprintName] = useState('');
+  const [boardId, setBoardId] = useState('133');
+  const [mockMode, setMockMode] = useState(false);
   const [extraJson, setExtraJson] = useState('');
   const [extraJsonError, setExtraJsonError] = useState('');
   const [showExtraJson, setShowExtraJson] = useState(false);
@@ -228,8 +228,8 @@ export default function Stage3Page() {
           </ConsoleHeading>
 
           {!response ? (
-            <div className="text-green-500 font-mono text-sm">
-              [ NO RESULTS YET ]
+            <div className="text-green-500/50 font-mono text-sm">
+              [ Запустите workflow для получения результатов ]
             </div>
           ) : (
             <div className="space-y-6">
@@ -375,9 +375,20 @@ export default function Stage3Page() {
                 </div>
               )}
 
-              {!result?.reportValidation && (
-                <div className="font-mono text-sm text-gray-500">
-                  [ No validation results ]
+              {!result?.reportValidation && !result?.report && (
+                <div className="border border-yellow-500/50 bg-yellow-500/5 p-4">
+                  <div className="text-yellow-500 font-mono text-sm mb-2">
+                    ⚠️ Нет данных для валидации
+                  </div>
+                  <div className="text-yellow-500/70 font-mono text-xs space-y-1">
+                    <p>Возможные причины:</p>
+                    <ul className="list-disc list-inside pl-2">
+                      <li>Jira не настроен (проверьте .env файл)</li>
+                      <li>OpenAI не настроен</li>
+                      <li>Отчёт не был сгенерирован</li>
+                    </ul>
+                    <p className="mt-2">Включите Mock Mode для тестирования без внешних сервисов.</p>
+                  </div>
                 </div>
               )}
             </div>
