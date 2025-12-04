@@ -38,6 +38,18 @@ export interface DemoRecommendation {
 }
 
 /**
+ * Prediction of sprint completion.
+ */
+export interface CompletionPrediction {
+  /** Confidence level 0-100% that all tasks will be completed on time */
+  confidencePercent: number;
+  /** Explanation of the prediction */
+  comment: string;
+  /** Key risks that could affect completion */
+  risks?: string[];
+}
+
+/**
  * Overall strategic analysis for the sprint.
  */
 export interface StrategicAnalysis {
@@ -46,6 +58,8 @@ export interface StrategicAnalysis {
   overallScore: number;
   summary: string;
   demoRecommendations?: DemoRecommendation[];
+  /** AI prediction of sprint completion */
+  completionPrediction?: CompletionPrediction;
 }
 
 /**

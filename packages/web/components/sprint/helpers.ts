@@ -89,4 +89,17 @@ export function getComplexityColor(complexity: number): string {
   return 'text-red-500';
 }
 
+export function getConfidenceColor(percent: number): string {
+  if (percent >= 70) return 'text-green-400';
+  if (percent >= 40) return 'text-yellow-500';
+  return 'text-red-400';
+}
+
+export function getConfidenceLabel(percent: number): string {
+  if (percent >= 80) return 'Высокая уверенность';
+  if (percent >= 60) return 'Умеренная уверенность';
+  if (percent >= 40) return 'Низкая уверенность';
+  return 'Критический риск';
+}
+
 

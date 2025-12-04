@@ -42,6 +42,9 @@ export function generateMockPreviousSprintIssues(): SprintIssue[] {
       storyPoints: 8,
       assignee: 'Иван Петров',
       artifact: 'https://figma.com/demo-scenario',
+      issueType: 'История',
+      priority: 'High',
+      epicKey: 'PROJ-50',
     },
     {
       key: 'PROJ-102',
@@ -51,6 +54,9 @@ export function generateMockPreviousSprintIssues(): SprintIssue[] {
       storyPoints: 5,
       assignee: 'Мария Сидорова',
       artifact: null,
+      issueType: 'Задача',
+      priority: 'Medium',
+      epicKey: 'PROJ-51',
     },
     {
       key: 'PROJ-103',
@@ -60,6 +66,9 @@ export function generateMockPreviousSprintIssues(): SprintIssue[] {
       storyPoints: 3,
       assignee: 'Иван Петров',
       artifact: 'https://loom.com/notifications-demo',
+      issueType: 'История',
+      priority: 'Medium',
+      epicKey: 'PROJ-50',
     },
     {
       key: 'PROJ-106',
@@ -69,6 +78,9 @@ export function generateMockPreviousSprintIssues(): SprintIssue[] {
       storyPoints: 5,
       assignee: 'Мария Сидорова',
       artifact: 'https://figma.com/cabinet-redesign',
+      issueType: 'История',
+      priority: 'High',
+      epicKey: 'PROJ-51',
     },
   ];
 }
@@ -83,6 +95,9 @@ export function generateMockCurrentSprintIssues(): SprintIssue[] {
       storyPoints: 8,
       assignee: 'Алексей Козлов',
       artifact: 'https://loom.com/partner-integration-demo',
+      issueType: 'История',
+      priority: 'Highest',
+      epicKey: 'PROJ-52',
     },
     {
       key: 'PROJ-112',
@@ -92,6 +107,9 @@ export function generateMockCurrentSprintIssues(): SprintIssue[] {
       storyPoints: 5,
       assignee: 'Иван Петров',
       artifact: 'https://loom.com/notifications-demo',
+      issueType: 'История',
+      priority: 'High',
+      epicKey: 'PROJ-50',
     },
     {
       key: 'PROJ-113',
@@ -101,6 +119,9 @@ export function generateMockCurrentSprintIssues(): SprintIssue[] {
       storyPoints: 3,
       assignee: 'Мария Сидорова',
       artifact: null,
+      issueType: 'Задача',
+      priority: 'Medium',
+      epicKey: 'PROJ-52',
     },
     {
       key: 'PROJ-114',
@@ -110,6 +131,9 @@ export function generateMockCurrentSprintIssues(): SprintIssue[] {
       storyPoints: 5,
       assignee: 'Иван Петров',
       artifact: null,
+      issueType: 'Задача',
+      priority: 'High',
+      epicKey: 'PROJ-52',
     },
     {
       key: 'PROJ-115',
@@ -119,6 +143,19 @@ export function generateMockCurrentSprintIssues(): SprintIssue[] {
       storyPoints: 3,
       assignee: null,
       artifact: null,
+      issueType: 'Задача',
+      priority: 'Medium',
+    },
+    {
+      key: 'PROJ-116',
+      summary: 'Исправить ошибку при загрузке файлов',
+      status: 'Done',
+      statusCategory: 'done',
+      storyPoints: 2,
+      assignee: 'Алексей Козлов',
+      artifact: null,
+      issueType: 'Баг',
+      priority: 'High',
     },
   ];
 }
@@ -147,9 +184,40 @@ export function generateMockStrategicAnalysis(): StrategicAnalysis {
       directlyRelatedPercent: 75,
       unrelatedTasks: ['Настроить мониторинг для продакшн-окружения'],
     },
+    completionPrediction: {
+      confidencePercent: 72,
+      comment: 'Высокая вероятность завершения спринта в срок. 4 из 6 задач уже выполнены, оставшиеся задачи имеют средний уровень сложности. Основной риск — задача по тестовым сценариям требует координации с партнёрами.',
+      risks: [
+        'Задача PROJ-114 зависит от внешних партнёров',
+        'Задача PROJ-115 не назначена на исполнителя',
+      ],
+    },
     overallScore: 85,
     summary: 'Спринт хорошо согласован с целями версии. Команда фокусируется на ключевых задачах для подготовки MVP к бета-тестированию с партнёрами.',
   };
+}
+
+export function generateMockEpics(): Array<{ key: string; name: string; summary: string; done: boolean }> {
+  return [
+    {
+      key: 'PROJ-50',
+      name: 'Пользовательский сценарий',
+      summary: 'Реализация основного пользовательского сценария',
+      done: false,
+    },
+    {
+      key: 'PROJ-51',
+      name: 'Оптимизация UI',
+      summary: 'Улучшение производительности и дизайна интерфейса',
+      done: true,
+    },
+    {
+      key: 'PROJ-52',
+      name: 'Партнёрская интеграция',
+      summary: 'Интеграция с партнёрскими системами',
+      done: false,
+    },
+  ];
 }
 
 

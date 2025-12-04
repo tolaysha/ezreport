@@ -6,6 +6,9 @@
 export type {
   SprintMeta,
   SprintIssue,
+  SprintEpic,
+  TopAssignee,
+  SprintStatistics,
   GoalMatchLevel,
   SprintCardData,
   SprintInfo,
@@ -23,6 +26,7 @@ export type {
   VersionSprintAlignment,
   SprintTasksAlignment,
   DemoRecommendation,
+  CompletionPrediction,
   StrategicAnalysis,
   GoalAlignmentResult,
 } from './analysis';

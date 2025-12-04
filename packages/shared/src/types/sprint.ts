@@ -29,6 +29,50 @@ export interface SprintIssue {
   storyPoints: number | null;
   assignee: string | null;
   artifact: string | null;
+  /** Issue type: История, Задача, Баг, etc. */
+  issueType?: string;
+  /** Priority: Highest, High, Medium, Low, Lowest */
+  priority?: string;
+  /** Parent issue key (for subtasks) */
+  parentKey?: string;
+  /** Epic key this issue belongs to */
+  epicKey?: string;
+}
+
+/**
+ * Epic with its issues in the sprint.
+ */
+export interface SprintEpic {
+  key: string;
+  name: string;
+  summary: string;
+  done: boolean;
+  /** Issues from this epic that are in the sprint */
+  issues: SprintIssue[];
+}
+
+/**
+ * Top assignee with task count.
+ */
+export interface TopAssignee {
+  name: string;
+  count: number;
+}
+
+/**
+ * Sprint statistics breakdown.
+ */
+export interface SprintStatistics {
+  /** Count by issue type (История, Задача, Баг) */
+  byType: Record<string, number>;
+  /** Count by status */
+  byStatus: Record<string, number>;
+  /** Count by priority */
+  byPriority: Record<string, number>;
+  /** Top 3 assignees by task count */
+  topAssignees: TopAssignee[];
+  /** Total issues count */
+  totalIssues: number;
 }
 
 /**
@@ -45,6 +89,10 @@ export interface SprintCardData {
   goalMatchLevel: GoalMatchLevel;
   goalMatchComment: string;
   recommendedArtifactIssues: SprintIssue[];
+  /** Epics with their issues in this sprint */
+  epics?: SprintEpic[];
+  /** Statistics breakdown */
+  statistics?: SprintStatistics;
 }
 
 /**

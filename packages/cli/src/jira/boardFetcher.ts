@@ -4,7 +4,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 
-import type { SprintMeta, SprintIssue, VersionMeta } from '@ezreport/shared';
+import type { SprintMeta, SprintIssue, VersionMeta, SprintEpic } from '@ezreport/shared';
 import { JIRA_CONFIG } from '../config';
 import { logger } from '../utils/logger';
 import type {
@@ -15,6 +15,7 @@ import type {
   JiraBoardProjectResponse,
   JiraVersion,
 } from './types';
+import { getJiraIssueFields, extractIssueData } from './fieldSchema';
 
 // =============================================================================
 // Client Creation
@@ -86,13 +87,7 @@ export async function fetchIssuesForSprint(
     } = {
       jql,
       maxResults,
-      fields: [
-        'summary',
-        'status',
-        'assignee',
-        'customfield_10016', // Story points
-        JIRA_CONFIG.artifactFieldId,
-      ],
+      fields: getJiraIssueFields(),
     };
 
     if (nextPageToken) {
@@ -250,35 +245,7 @@ export function toSprintMeta(sprint: JiraSprint): SprintMeta {
 }
 
 export function toSprintIssue(issue: JiraIssue): SprintIssue {
-  const fields = issue.fields;
-
-  const storyPoints =
-    (fields.customfield_10016 as number) ??
-    (fields.customfield_10004 as number) ??
-    null;
-
-  const artifactValue = fields[JIRA_CONFIG.artifactFieldId];
-  let artifact: string | null = null;
-
-  if (typeof artifactValue === 'string') {
-    artifact = artifactValue;
-  } else if (
-    artifactValue &&
-    typeof artifactValue === 'object' &&
-    'value' in artifactValue
-  ) {
-    artifact = String(artifactValue.value);
-  }
-
-  return {
-    key: issue.key,
-    summary: fields.summary,
-    status: fields.status.name,
-    statusCategory: fields.status.statusCategory.key,
-    storyPoints,
-    assignee: fields.assignee?.displayName ?? null,
-    artifact,
-  };
+  return extractIssueData(issue.key, issue.fields as Record<string, unknown>);
 }
 
 export function toVersionMeta(
@@ -293,6 +260,102 @@ export function toVersionMeta(
     released: version.released,
     progressPercent,
   };
+}
+
+// =============================================================================
+// Epic Fetching
+// =============================================================================
+
+interface JiraEpicResponse {
+  values: Array<{
+    id: number;
+    key: string;
+    name: string;
+    summary: string;
+    done: boolean;
+  }>;
+  isLast: boolean;
+}
+
+/**
+ * Fetch all epics for a board.
+ */
+export async function fetchEpicsForBoard(
+  client: AxiosInstance,
+  boardId: string,
+): Promise<Array<{ key: string; name: string; summary: string; done: boolean }>> {
+  try {
+    const allEpics: Array<{ key: string; name: string; summary: string; done: boolean }> = [];
+    let startAt = 0;
+    const maxResults = 50;
+
+    while (true) {
+      const response = await client.get<JiraEpicResponse>(
+        `/rest/agile/1.0/board/${boardId}/epic`,
+        { params: { startAt, maxResults } },
+      );
+
+      for (const epic of response.data.values) {
+        allEpics.push({
+          key: epic.key,
+          name: epic.name || epic.summary,
+          summary: epic.summary,
+          done: epic.done,
+        });
+      }
+
+      if (response.data.isLast) {
+        break;
+      }
+      startAt += maxResults;
+    }
+
+    logger.info(`[fetchEpicsForBoard] Found ${allEpics.length} epics for board ${boardId}`);
+    return allEpics;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`[fetchEpicsForBoard] Failed to fetch epics for board ${boardId}`, { error: message });
+    return [];
+  }
+}
+
+/**
+ * Group sprint issues by epic.
+ */
+export function groupIssuesByEpic(
+  issues: SprintIssue[],
+  epics: Array<{ key: string; name: string; summary: string; done: boolean }>,
+): SprintEpic[] {
+  const epicMap = new Map<string, SprintEpic>();
+  
+  // Initialize epics that have issues in this sprint
+  for (const issue of issues) {
+    if (issue.epicKey && !epicMap.has(issue.epicKey)) {
+      const epicInfo = epics.find(e => e.key === issue.epicKey);
+      if (epicInfo) {
+        epicMap.set(issue.epicKey, {
+          key: epicInfo.key,
+          name: epicInfo.name,
+          summary: epicInfo.summary,
+          done: epicInfo.done,
+          issues: [],
+        });
+      }
+    }
+  }
+  
+  // Group issues by epic
+  for (const issue of issues) {
+    if (issue.epicKey && epicMap.has(issue.epicKey)) {
+      epicMap.get(issue.epicKey)!.issues.push(issue);
+    }
+  }
+  
+  // Sort by issue count descending
+  const result = Array.from(epicMap.values())
+    .sort((a, b) => b.issues.length - a.issues.length);
+  
+  return result;
 }
 
 // =============================================================================

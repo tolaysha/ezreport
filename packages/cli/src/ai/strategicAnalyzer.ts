@@ -150,6 +150,11 @@ ${demoIssuesSection}
     "directlyRelatedPercent": число от 0 до 100,
     "unrelatedTasks": ["название задачи 1", "название задачи 2"]
   },
+  "completionPrediction": {
+    "confidencePercent": число от 0 до 100 (уверенность что ВСЕ задачи будут выполнены в срок),
+    "comment": "Объяснение предсказания (2-3 предложения). Учитывай текущий прогресс, количество задач в работе, сложность оставшихся задач.",
+    "risks": ["риск 1", "риск 2"] (факторы которые могут помешать выполнению)
+  },
   "overallScore": число от 0 до 100,
   "summary": "Краткое резюме для партнёров (2-3 предложения)",
   "demoRecommendations": [
@@ -172,6 +177,8 @@ function generateBasicAnalysis(
   sprint: SprintCardData,
 ): StrategicAnalysis {
   const doneIssues = sprint.issues.filter((i) => i.statusCategory === 'done');
+  const inProgressIssues = sprint.issues.filter((i) => i.statusCategory === 'indeterminate');
+  const todoIssues = sprint.issues.filter((i) => i.statusCategory === 'new');
   const totalSP = sprint.issues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
   const doneSP = doneIssues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
   const progressPercent = totalSP > 0 ? Math.round((doneSP / totalSP) * 100) : 0;
@@ -181,6 +188,20 @@ function generateBasicAnalysis(
   if (goalLevel === 'strong') taskAlignment = 'aligned';
   else if (goalLevel === 'medium') taskAlignment = 'partial';
   else if (goalLevel === 'weak') taskAlignment = 'misaligned';
+
+  // Basic completion prediction based on progress
+  const remainingTasks = inProgressIssues.length + todoIssues.length;
+  const completionConfidence = remainingTasks === 0 ? 100 :
+    progressPercent >= 70 ? 75 :
+    progressPercent >= 40 ? 50 : 25;
+
+  const risks: string[] = [];
+  if (todoIssues.length > 0) {
+    risks.push(`${todoIssues.length} задач ещё не начаты`);
+  }
+  if (inProgressIssues.length > 3) {
+    risks.push('Много задач в работе одновременно');
+  }
 
   return {
     versionSprintAlignment: {
@@ -195,6 +216,11 @@ function generateBasicAnalysis(
       comment: sprint.goalMatchComment || 'Анализ соответствия задач цели спринта.',
       directlyRelatedPercent: goalLevel === 'strong' ? 80 : goalLevel === 'medium' ? 55 : 30,
       unrelatedTasks: undefined,
+    },
+    completionPrediction: {
+      confidencePercent: completionConfidence,
+      comment: `Базовая оценка на основе прогресса (${progressPercent}%). Требуется AI-анализ для точного предсказания.`,
+      risks: risks.length > 0 ? risks : undefined,
     },
     overallScore: progressPercent,
     summary: `Спринт выполнен на ${progressPercent}%. ${sprint.goalMatchComment || ''}`,

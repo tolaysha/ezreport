@@ -1,7 +1,7 @@
 'use client';
 
 import type { StrategicAnalysis, DemoRecommendation, SprintCardData } from '@/types/workflow';
-import { getAlignmentColor, getAlignmentLabel, getScoreColor, getDemoFormatIcon, getComplexityColor } from './helpers';
+import { getAlignmentColor, getAlignmentLabel, getScoreColor, getDemoFormatIcon, getComplexityColor, getConfidenceColor, getConfidenceLabel } from './helpers';
 
 // =============================================================================
 // Expert Role Types
@@ -431,6 +431,50 @@ export function AnalysisPanel({
           {summary}
         </div>
       </div>
+
+      {/* Completion Prediction */}
+      {analysis.completionPrediction && (
+        <div className="border border-orange-500/40 bg-orange-500/5 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-orange-400 font-mono text-sm">🎯 ПРОГНОЗ ВЫПОЛНЕНИЯ</span>
+              <span className="text-purple-400/70 font-mono text-xs px-1.5 py-0.5 bg-purple-500/10 rounded">🤖 AI</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`font-mono text-2xl font-bold ${getConfidenceColor(analysis.completionPrediction.confidencePercent)} animate-ai-glow`}>
+                {analysis.completionPrediction.confidencePercent}%
+              </span>
+            </div>
+          </div>
+          
+          {/* Confidence Level Label */}
+          <div className="mb-3">
+            <span className={`font-mono text-sm ${getConfidenceColor(analysis.completionPrediction.confidencePercent)}`}>
+              {getConfidenceLabel(analysis.completionPrediction.confidencePercent)}
+            </span>
+          </div>
+          
+          {/* Comment */}
+          <div className="text-orange-300/80 font-mono text-xs mb-3 animate-ai-glow-slow">
+            {analysis.completionPrediction.comment}
+          </div>
+          
+          {/* Risks */}
+          {analysis.completionPrediction.risks && analysis.completionPrediction.risks.length > 0 && (
+            <div className="border-t border-orange-500/30 pt-3">
+              <div className="text-red-400/70 font-mono text-xs mb-2">⚠️ РИСКИ:</div>
+              <ul className="space-y-1">
+                {analysis.completionPrediction.risks.map((risk, idx) => (
+                  <li key={idx} className="text-red-300/70 font-mono text-xs flex items-start gap-2">
+                    <span className="text-red-500">•</span>
+                    <span>{risk}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Version-Sprint Goals Alignment */}
       <div className="border border-green-500/30 p-3 space-y-3">

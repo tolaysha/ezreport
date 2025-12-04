@@ -16,6 +16,9 @@ import type {
   SprintIssue,
   SprintCardData,
   BasicBoardSprintData,
+  SprintStatistics,
+  SprintEpic,
+  TopAssignee,
 } from '@ezreport/shared';
 
 import { IS_MOCK, isJiraConfigured } from '../config';
@@ -28,6 +31,7 @@ import {
   generateMockPreviousSprintIssues,
   generateMockCurrentSprintIssues,
   generateMockActiveVersion,
+  generateMockEpics,
 } from '../mocks/sprintMocks';
 
 // Jira
@@ -36,6 +40,8 @@ import {
   fetchSprintsForBoard,
   fetchIssuesForSprint,
   fetchProjectAndActiveVersion,
+  fetchEpicsForBoard,
+  groupIssuesByEpic,
   toSprintMeta,
   toSprintIssue,
 } from '../jira/boardFetcher';
@@ -80,6 +86,49 @@ export function pickRecommendedArtifactIssues(issues: SprintIssue[]): SprintIssu
   return scored.slice(0, maxItems).map((s) => s.issue);
 }
 
+/**
+ * Compute statistics from sprint issues.
+ */
+export function computeSprintStatistics(issues: SprintIssue[]): SprintStatistics {
+  const byType: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+  const byPriority: Record<string, number> = {};
+  const assigneeCounts: Record<string, number> = {};
+
+  for (const issue of issues) {
+    // By type
+    const type = issue.issueType || 'Unknown';
+    byType[type] = (byType[type] || 0) + 1;
+
+    // By status
+    const status = issue.status || 'Unknown';
+    byStatus[status] = (byStatus[status] || 0) + 1;
+
+    // By priority
+    const priority = issue.priority || 'None';
+    byPriority[priority] = (byPriority[priority] || 0) + 1;
+
+    // By assignee
+    const assignee = issue.assignee || 'Unassigned';
+    assigneeCounts[assignee] = (assigneeCounts[assignee] || 0) + 1;
+  }
+
+  // Top 3 assignees
+  const topAssignees: TopAssignee[] = Object.entries(assigneeCounts)
+    .filter(([name]) => name !== 'Unassigned')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => ({ name, count }));
+
+  return {
+    byType,
+    byStatus,
+    byPriority,
+    topAssignees,
+    totalIssues: issues.length,
+  };
+}
+
 // =============================================================================
 // Sprint Card Builder
 // =============================================================================
@@ -87,8 +136,10 @@ export function pickRecommendedArtifactIssues(issues: SprintIssue[]): SprintIssu
 function buildSprintCardData(
   sprintMeta: SprintMeta,
   issues: SprintIssue[],
+  epics?: SprintEpic[],
 ): SprintCardData {
   const recommendedArtifactIssues = pickRecommendedArtifactIssues(issues);
+  const statistics = computeSprintStatistics(issues);
 
   // No AI calls in data collection step
   // Goal alignment will be assessed later in the analysis step if needed
@@ -100,12 +151,15 @@ function buildSprintCardData(
     goalMatchLevel: hasGoal ? 'unknown' : 'unknown',
     goalMatchComment: hasGoal ? 'Оценка будет выполнена на этапе анализа.' : 'Цель спринта не указана.',
     recommendedArtifactIssues,
+    epics,
+    statistics,
   };
 }
 
 async function buildSprintCardDataSafe(
   sprint: { id: number; name: string; state: string; startDate?: string; endDate?: string; goal?: string },
   fetchIssues: () => Promise<{ key: string; fields: Record<string, unknown> }[]>,
+  boardEpics?: Array<{ key: string; name: string; summary: string; done: boolean }>,
 ): Promise<SprintCardData> {
   const sprintMeta = toSprintMeta(sprint as Parameters<typeof toSprintMeta>[0]);
   let issues: SprintIssue[] = [];
@@ -124,10 +178,20 @@ async function buildSprintCardDataSafe(
       goalMatchLevel: 'unknown',
       goalMatchComment: 'Не удалось загрузить задачи спринта.',
       recommendedArtifactIssues: [],
+      statistics: {
+        byType: {},
+        byStatus: {},
+        byPriority: {},
+        topAssignees: [],
+        totalIssues: 0,
+      },
     };
   }
 
-  return buildSprintCardData(sprintMeta, issues);
+  // Group issues by epic if epics data is available
+  const epics = boardEpics ? groupIssuesByEpic(issues, boardEpics) : undefined;
+
+  return buildSprintCardData(sprintMeta, issues, epics);
 }
 
 // =============================================================================
@@ -157,14 +221,20 @@ export async function collectBasicBoardSprintData(
   if (useMockMode) {
     logger.info('[collectBasicBoardSprintData] Using mock data');
 
+    const mockEpics = generateMockEpics();
+    const previousIssues = generateMockPreviousSprintIssues();
+    const currentIssues = generateMockCurrentSprintIssues();
+    
     result.activeVersion = generateMockActiveVersion();
     result.previousSprint = buildSprintCardData(
       generateMockPreviousSprint(),
-      generateMockPreviousSprintIssues(),
+      previousIssues,
+      groupIssuesByEpic(previousIssues, mockEpics),
     );
     result.currentSprint = buildSprintCardData(
       generateMockCurrentSprint(),
-      generateMockCurrentSprintIssues(),
+      currentIssues,
+      groupIssuesByEpic(currentIssues, mockEpics),
     );
     
     // No AI calls in data collection step
@@ -219,6 +289,10 @@ export async function collectBasicBoardSprintData(
   }
   result.activeVersion = projectAndVersion.activeVersion;
 
+  // Fetch epics for the board
+  logger.info(`[collectBasicBoardSprintData] Fetching epics for board ${boardId}`);
+  const boardEpics = await fetchEpicsForBoard(client, boardId);
+
   // Build previous sprint card
   if (closedSprints.length > 0) {
     const previousSprint = closedSprints[0];
@@ -226,6 +300,7 @@ export async function collectBasicBoardSprintData(
     result.previousSprint = await buildSprintCardDataSafe(
       previousSprint,
       () => fetchIssuesForSprint(client, previousSprint.id),
+      boardEpics,
     );
     result.availability.hasPreviousSprint = true;
   }
@@ -236,6 +311,7 @@ export async function collectBasicBoardSprintData(
     result.currentSprint = await buildSprintCardDataSafe(
       activeSprint,
       () => fetchIssuesForSprint(client, activeSprint.id),
+      boardEpics,
     );
     result.availability.hasCurrentSprint = true;
   }
