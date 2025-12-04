@@ -15,36 +15,6 @@ import {
 } from '@/components/console';
 import { SprintCard, VersionCard, AnalysisPanel } from '@/components/sprint';
 
-// =============================================================================
-// Loading Indicator
-// =============================================================================
-
-function LoadingIndicator() {
-  return (
-    <div className="py-8">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-green-500 animate-spin">◌</span>
-        <span className="font-mono text-sm text-green-400">
-          [ ЗАГРУЗКА ДАННЫХ ]
-        </span>
-      </div>
-      <div className="space-y-2 font-mono text-xs text-green-500/70">
-        <div className="flex items-center gap-2">
-          <span className="text-green-500 animate-pulse">▸</span>
-          <span>Подключение к Jira...</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-green-500 animate-pulse" style={{ animationDelay: '0.2s' }}>▸</span>
-          <span>Загрузка спринтов...</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-green-500 animate-pulse" style={{ animationDelay: '0.4s' }}>▸</span>
-          <span>Обработка задач...</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // =============================================================================
 // AI Analysis Trigger Panel
@@ -117,6 +87,7 @@ export default function DataPage() {
   const [showCursor, setShowCursor] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Cursor blink
   useEffect(() => {
@@ -140,6 +111,39 @@ export default function DataPage() {
 
   const addToHistory = (command: string, response: string, type: 'success' | 'error' | 'info') => {
     setHistory(prev => [...prev, { command, response, type }]);
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (!bottomRef.current) return;
+      
+      const targetPosition = bottomRef.current.getBoundingClientRect().top + window.scrollY;
+      const startPosition = window.scrollY;
+      const distance = targetPosition - startPosition;
+      const duration = 4000; // 4 секунды
+      let startTime: number | null = null;
+
+      // Ease-in-out функция для плавного начала и конца
+      const easeInOutCubic = (t: number): number => {
+        return t < 0.5 
+          ? 4 * t * t * t 
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      const animateScroll = (currentTime: number) => {
+        if (startTime === null) startTime = currentTime;
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        window.scrollTo(0, startPosition + distance * easeInOutCubic(progress));
+        
+        if (progress < 1) {
+          requestAnimationFrame(animateScroll);
+        }
+      };
+
+      requestAnimationFrame(animateScroll);
+    }, 500);
   };
 
   const handleCollectData = async (boardId: string) => {
@@ -166,6 +170,9 @@ export default function DataPage() {
         `✓ Данные загружены: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
         'success'
       );
+      
+      // Медленно скроллим к низу страницы
+      scrollToBottom();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       addToHistory('', `ERROR: ${errorMessage}`, 'error');
@@ -343,11 +350,17 @@ export default function DataPage() {
 
         {/* Results */}
         <ConsolePanel>
-          <ConsoleHeading level={2} className="mb-4">[ ДАННЫЕ ]</ConsoleHeading>
+          <div className="flex items-center justify-between mb-4">
+            <ConsoleHeading level={2}>[ ДАННЫЕ ]</ConsoleHeading>
+            {isRunning && (
+              <span className="text-green-500 font-mono text-sm flex items-center gap-2">
+                <span className="animate-spin">◌</span>
+                загрузка...
+              </span>
+            )}
+          </div>
 
-          {isRunning ? (
-            <LoadingIndicator />
-          ) : !collectResponse ? (
+          {!collectResponse ? (
             <div className="text-green-500/50 font-mono text-sm">
               [ Выполните команду start {'<board_id>'} для загрузки данных ]
             </div>
@@ -431,22 +444,24 @@ export default function DataPage() {
           {hasData ? (
             <Link
               href="/analyse"
-              className="inline-block border-2 text-lg px-8 py-4 font-mono transition-all duration-300 border-purple-500 text-purple-300 bg-purple-500/10 hover:bg-purple-500/30 hover:text-white shadow-[0_0_20px_rgba(168,85,247,0.4),0_0_40px_rgba(168,85,247,0.2),inset_0_0_20px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6),0_0_60px_rgba(168,85,247,0.3),inset_0_0_30px_rgba(168,85,247,0.2)] animate-pulse-slow"
+              className="inline-block border border-purple-500/50 px-6 py-3 font-mono text-purple-400 hover:bg-purple-500/10 hover:border-purple-400 transition-colors"
             >
-              🤖 [AI] Перейти к анализу →
+              [ UNLOCK STRATEGIC INSIGHTS → ]
             </Link>
           ) : (
-            <div className="inline-block border-2 text-lg px-8 py-4 font-mono border-purple-500/20 text-purple-500/30 bg-purple-500/5 cursor-not-allowed relative overflow-hidden">
-              <span className="opacity-50">🤖 [AI] Перейти к анализу →</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent animate-shimmer" />
-            </div>
+            <span className="inline-block border border-purple-500/20 px-6 py-3 font-mono text-purple-500/30 cursor-not-allowed">
+              [ UNLOCK STRATEGIC INSIGHTS → ]
+            </span>
           )}
           {!hasData && (
-            <div className="text-purple-500/40 font-mono text-xs mt-3">
+            <div className="text-green-500/30 font-mono text-xs mt-3">
               ⏳ Ожидание данных из Jira...
             </div>
           )}
         </div>
+        
+        {/* Scroll anchor */}
+        <div ref={bottomRef} />
       </div>
     </div>
   );
