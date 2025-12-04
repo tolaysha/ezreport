@@ -259,7 +259,7 @@ export async function generateSprintReport(
 // =============================================================================
 
 export interface TestModeOptions {
-  sprintNameOrId: string;
+  sprintNameOrId?: string; // Optional: if not provided, will auto-detect from Jira
 }
 
 interface TestModeSummary {
@@ -354,11 +354,12 @@ function generateMockReportForTestMode(
  * - Tries real integrations (Jira, OpenAI, Notion) if configured
  * - Falls back to mocks for any integration that fails or is not configured
  * - Never throws errors - logs issues and continues
+ * - Auto-detects current/last sprint from Jira if sprintNameOrId is not provided
  *
  * Use this as a "bull test" to verify the pipeline is wired correctly.
  */
 export async function runSprintReportTestMode(
-  options: TestModeOptions,
+  options: TestModeOptions = {},
 ): Promise<void> {
   const { sprintNameOrId } = options;
 
@@ -366,13 +367,13 @@ export async function runSprintReportTestMode(
     jira: 'mock',
     openai: 'mock',
     notion: 'mock',
-    sprintName: sprintNameOrId,
+    sprintName: sprintNameOrId ?? 'Auto-detect',
     pageId: '',
     pageUrl: '',
   };
 
   let issues: SprintIssue[];
-  let sprintName: string = sprintNameOrId;
+  let sprintName: string = sprintNameOrId ?? 'Mock Sprint';
   let startDate: string | undefined;
   let endDate: string | undefined;
   let sprintGoal: string | undefined;
@@ -391,7 +392,28 @@ export async function runSprintReportTestMode(
   } else {
     try {
       logger.debug('[TEST] Attempting real Jira integration...');
-      const sprintData = await jiraClient.getSprintData(sprintNameOrId);
+      
+      let sprintData;
+      if (sprintNameOrId) {
+        // Use provided sprint name/id
+        sprintData = await jiraClient.getSprintData(sprintNameOrId);
+      } else {
+        // Auto-detect: get current or last sprint
+        console.log('  [TEST] Auto-detecting current sprint from Jira...');
+        const recentSprints = await jiraClient.getRecentSprints();
+        console.log(`  [TEST] Found sprint: ${recentSprints.current.name} (${recentSprints.current.state})`);
+        if (recentSprints.previous) {
+          console.log(`  [TEST] Previous sprint: ${recentSprints.previous.name}`);
+        }
+        sprintData = {
+          sprint: recentSprints.current,
+          issues: [] as ParsedJiraIssue[],
+        };
+        // Fetch issues for the detected sprint
+        const rawIssues = await jiraClient.getIssuesForSprint(recentSprints.current.id);
+        sprintData.issues = rawIssues.map(issue => jiraClient.parseIssue(issue));
+      }
+      
       const { sprint, issues: rawIssues } = sprintData;
 
       sprintName = sprint.name;
@@ -400,6 +422,7 @@ export async function runSprintReportTestMode(
       sprintGoal = sprint.goal;
       issues = rawIssues.map(toSprintIssue);
       summary.jira = 'real';
+      summary.sprintName = sprintName;
       console.log(`  ✓ Loaded ${issues.length} issues from Jira (REAL)`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -227,6 +227,80 @@ export class JiraClient {
       issues,
     };
   }
+
+  /**
+   * Get recent sprints: active sprint or last closed sprint
+   * Returns { current, previous } where:
+   * - current: active sprint if exists, otherwise last closed sprint
+   * - previous: previous closed sprint (for context)
+   */
+  async getRecentSprints(): Promise<{ current: JiraSprint; previous?: JiraSprint }> {
+    if (IS_MOCK) {
+      throw new Error('getRecentSprints should not be called in mock mode');
+    }
+
+    if (!this.client) {
+      throw new Error('Jira client not initialized');
+    }
+
+    if (!JIRA_CONFIG.boardId) {
+      throw new Error('JIRA_BOARD_ID is required for getRecentSprints');
+    }
+
+    logger.info('Fetching recent sprints from board...');
+
+    // Fetch all sprints from the board
+    const allSprints: JiraSprint[] = [];
+    let startAt = 0;
+    const maxResults = 50;
+
+    while (true) {
+      const response = await this.client.get<JiraSprintResponse>(
+        `/rest/agile/1.0/board/${JIRA_CONFIG.boardId}/sprint`,
+        {
+          params: { startAt, maxResults },
+        },
+      );
+
+      allSprints.push(...response.data.values);
+
+      if (response.data.isLast) {
+        break;
+      }
+
+      startAt += maxResults;
+    }
+
+    // Find active sprint
+    const activeSprint = allSprints.find(s => s.state === 'active');
+
+    // Find closed sprints, sorted by end date (most recent first)
+    const closedSprints = allSprints
+      .filter(s => s.state === 'closed')
+      .sort((a, b) => {
+        const dateA = a.endDate ? new Date(a.endDate).getTime() : 0;
+        const dateB = b.endDate ? new Date(b.endDate).getTime() : 0;
+        return dateB - dateA; // Most recent first
+      });
+
+    if (activeSprint) {
+      logger.info(`Found active sprint: ${activeSprint.name}`);
+      return {
+        current: activeSprint,
+        previous: closedSprints[0], // Most recent closed sprint
+      };
+    }
+
+    if (closedSprints.length > 0) {
+      logger.info(`No active sprint, using last closed: ${closedSprints[0].name}`);
+      return {
+        current: closedSprints[0],
+        previous: closedSprints[1], // Second most recent closed sprint
+      };
+    }
+
+    throw new Error('No sprints found on the board');
+  }
 }
 
 // Singleton instance

@@ -6,6 +6,7 @@ interface CliArgs {
   dryRun?: boolean;
   help?: boolean;
   test?: boolean;
+  legacy?: boolean;
 }
 
 function parseArgs(args: string[]): CliArgs {
@@ -18,6 +19,8 @@ function parseArgs(args: string[]): CliArgs {
       result.dryRun = true;
     } else if (arg === '--test' || arg === '--e2e-test') {
       result.test = true;
+    } else if (arg === '--legacy') {
+      result.legacy = true;
     } else if (arg.startsWith('--sprint=')) {
       result.sprint = arg.replace('--sprint=', '');
     } else if (arg.startsWith('--sprint-id=')) {
@@ -33,20 +36,28 @@ function printHelp(): void {
 Sprint Report Generator
 
 Usage:
-  npm run sprint-report -- --sprint="Sprint 4"
+  npm run sprint-report -- --sprint="Sprint 5"
   npm run sprint-report -- --sprint-id=123
-  npm run sprint-report -- --sprint="Sprint 4" --dry-run
-  npm run sprint-report:test                              # E2E test mode
+  npm run sprint-report -- --sprint="Sprint 5" --dry-run
+  npm run sprint-report:test                              # E2E test mode (auto-detects sprint)
 
 Options:
   --sprint=<name>     Sprint name to generate report for
   --sprint-id=<id>    Sprint ID to generate report for
   --dry-run           Generate report but don't create Notion page
   --test              Run in E2E test mode (resilient, always succeeds)
+  --legacy            Use legacy pipeline (single AI prompt, no validation)
   --help, -h          Show this help message
+
+Workflow Stages:
+  The default pipeline uses a three-stage workflow:
+  1. Data collection & validation (with AI goal-issue match check)
+  2. Block-by-block report generation (each block uses its own AI prompt)
+  3. Final report validation (structure + AI partner-readiness check)
 
 Test Mode (--test):
   Runs the entire pipeline with resilient fallbacks:
+  - Auto-detects current/last sprint from Jira (or use --sprint to override)
   - Tries real Jira/OpenAI/Notion if configured
   - Falls back to mocks for any integration that fails or is not configured
   - Always completes successfully (exit code 0)
@@ -79,19 +90,14 @@ async function main(): Promise<void> {
 
   const sprintNameOrId = args.sprint ?? args.sprintId;
 
-  if (!sprintNameOrId) {
-    console.error('Error: Please provide --sprint or --sprint-id');
-    printHelp();
-    process.exit(1);
-  }
-
   // Test mode: resilient pipeline that always succeeds
+  // Sprint is optional in test mode - will auto-detect from Jira
   if (args.test) {
     const { runSprintReportTestMode } = await import('./services/sprintReport');
     const { logger } = await import('./utils/logger');
 
     logger.info('Starting sprint report generation in TEST MODE', {
-      sprint: sprintNameOrId,
+      sprint: sprintNameOrId ?? 'auto-detect',
     });
 
     console.log('\n🧪 Running in E2E TEST MODE...\n');
@@ -100,6 +106,12 @@ async function main(): Promise<void> {
 
     // Test mode always exits with 0
     process.exit(0);
+  }
+
+  if (!sprintNameOrId) {
+    console.error('Error: Please provide --sprint or --sprint-id');
+    printHelp();
+    process.exit(1);
   }
 
   // Normal mode: Import config and validate AFTER arg parsing
@@ -114,23 +126,90 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Import remaining modules after config validation
-  const { generateSprintReport } = await import('./services/sprintReport');
+  // Legacy mode: use the old single-prompt pipeline
+  if (args.legacy) {
+    const { generateSprintReport } = await import('./services/sprintReport');
+    const { logger } = await import('./utils/logger');
+
+    logger.info('Starting sprint report generation (LEGACY MODE)', {
+      sprint: sprintNameOrId,
+      dryRun: args.dryRun ?? false,
+    });
+
+    console.log('\n⚙️  Running in LEGACY mode (single AI prompt)...\n');
+
+    const result = await generateSprintReport({
+      sprintNameOrId,
+      dryRun: args.dryRun,
+    });
+
+    if (!result.success) {
+      console.error(`\n❌ Error: ${result.error}\n`);
+      process.exit(1);
+    }
+
+    process.exit(0);
+  }
+
+  // Default: New three-stage workflow
+  const { runSprintReportWorkflow } = await import('./services/sprintReportWorkflow');
   const { logger } = await import('./utils/logger');
 
-  logger.info('Starting sprint report generation', {
+  logger.info('Starting sprint report workflow', {
     sprint: sprintNameOrId,
     dryRun: args.dryRun ?? false,
   });
 
-  const result = await generateSprintReport({
+  console.log('\n🚀 Starting Sprint Report Workflow\n');
+  console.log('='.repeat(60));
+
+  const result = await runSprintReportWorkflow({
     sprintNameOrId,
     dryRun: args.dryRun,
   });
 
+  console.log('='.repeat(60));
+
+  // Print validation summary
+  if (result.dataValidation) {
+    const { errors, warnings } = result.dataValidation;
+    if (errors.length > 0 || warnings.length > 0) {
+      console.log('\n📋 Data Validation Summary:');
+      if (errors.length > 0) {
+        console.log(`   Errors: ${errors.length}`);
+        errors.forEach(e => console.log(`     ❌ ${e.message}`));
+      }
+      if (warnings.length > 0) {
+        console.log(`   Warnings: ${warnings.length}`);
+        warnings.forEach(w => console.log(`     ⚠️  ${w.message}`));
+      }
+    }
+  }
+
+  if (result.reportValidation) {
+    const { errors, warnings } = result.reportValidation;
+    if (errors.length > 0 || warnings.length > 0) {
+      console.log('\n📋 Report Validation Summary:');
+      if (errors.length > 0) {
+        console.log(`   Errors: ${errors.length}`);
+        errors.forEach(e => console.log(`     ❌ ${e.message}`));
+      }
+      if (warnings.length > 0) {
+        console.log(`   Warnings: ${warnings.length}`);
+        warnings.forEach(w => console.log(`     ⚠️  ${w.message}`));
+      }
+    }
+  }
+
   if (!result.success) {
-    console.error(`\n❌ Error: ${result.error}\n`);
+    console.error(`\n❌ Workflow failed: ${result.abortReason ?? result.error}\n`);
     process.exit(1);
+  }
+
+  if (result.notionPage) {
+    console.log(`\n✅ Success! Notion page: ${result.notionPage.url}\n`);
+  } else if (args.dryRun) {
+    console.log('\n✅ Dry run completed successfully.\n');
   }
 
   process.exit(0);
