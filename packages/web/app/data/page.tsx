@@ -32,18 +32,18 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
   return (
     <div className="border border-purple-500/30 bg-purple-500/5 p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-purple-400/70 font-mono text-sm">СТРАТЕГИЧЕСКИЙ АНАЛИЗ</span>
+        <span className="text-purple-400/70 font-mono text-sm">STRATEGIC ANALYSIS</span>
       </div>
       {isAnalyzing ? (
         <div className="py-4">
           <div className="text-purple-400 font-mono text-sm animate-ai-pulse">
-            🤖 Генерация AI анализа...
+            🤖 Generating AI analysis...
           </div>
         </div>
       ) : (
         <>
           <div className="text-purple-400/60 font-mono text-sm mb-4">
-            Данные загружены. Запустите AI анализ для получения стратегической оценки.
+            Data loaded. Run AI analysis to get strategic assessment.
           </div>
           <button
             onClick={(e) => {
@@ -53,7 +53,7 @@ function AnalysisTriggerPanel({ isAnalyzing, hasCurrentSprint, onRunAnalysis }: 
             disabled={isAnalyzing || !hasCurrentSprint}
             className="border border-purple-500 text-purple-400 px-4 py-2 font-mono text-sm hover:bg-purple-500 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            [RUN] 🤖 Запустить AI Анализ
+            [RUN] 🤖 Run AI Analysis
           </button>
         </>
       )}
@@ -121,7 +121,7 @@ export default function DataPage() {
 
   const handleCollectData = async (boardId: string) => {
     if (!boardId.trim()) {
-      addToHistory(`start`, 'ERROR: Board ID обязателен. Использование: start <board_id>', 'error');
+      addToHistory(`start`, 'ERROR: Board ID is required. Usage: start <board_id>', 'error');
       return;
     }
 
@@ -139,7 +139,7 @@ export default function DataPage() {
       
       addToHistory(
         `start ${boardId}`, 
-        `✓ Данные загружены: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
+        `✓ Data loaded: ${projectName}\n  Current Sprint: ${hasCurrent ? '✓' : '✗'}\n  Previous Sprint: ${hasPrevious ? '✓' : '✗'}`,
         'success'
       );
     } catch (err) {
@@ -152,7 +152,7 @@ export default function DataPage() {
 
   const handleRunAnalysis = async () => {
     if (!collectResponse?.basicBoardData?.currentSprint) {
-      addToHistory('analyze', 'ERROR: Нет данных для анализа. Сначала выполните start <board_id>', 'error');
+      addToHistory('analyze', 'ERROR: No data to analyze. First run start <board_id>', 'error');
       return;
     }
 
@@ -167,7 +167,7 @@ export default function DataPage() {
       });
       if (result.analysis) {
         setAnalysisResult(result.analysis);
-        addToHistory('analyze', '✓ AI анализ завершен', 'success');
+        addToHistory('analyze', '✓ AI analysis completed', 'success');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -210,22 +210,22 @@ export default function DataPage() {
       const boardId = cmd.trim().slice(6).trim();
       handleCollectData(boardId);
     } else if (trimmed === 'start') {
-      addToHistory('start', 'ERROR: Укажите Board ID. Использование: start <board_id>', 'error');
+      addToHistory('start', 'ERROR: Specify Board ID. Usage: start <board_id>', 'error');
     } else if (trimmed === 'analyze') {
       handleRunAnalysis();
     } else if (trimmed === 'help') {
       addToHistory('help', 
-        'Доступные команды:\n' +
-        '  start <board_id>  - Загрузить данные спринта\n' +
-        '  analyze           - Запустить AI анализ\n' +
-        '  clear             - Очистить терминал\n' +
-        '  help              - Показать справку',
+        'Available commands:\n' +
+        '  start <board_id>  - Load sprint data\n' +
+        '  analyze           - Run AI analysis\n' +
+        '  clear             - Clear terminal\n' +
+        '  help              - Show help',
         'info'
       );
     } else if (trimmed === 'clear') {
       setHistory([]);
     } else {
-      addToHistory(cmd, `ERROR: Неизвестная команда "${trimmed}". Введите help для справки.`, 'error');
+      addToHistory(cmd, `ERROR: Unknown command "${trimmed}". Type help for assistance.`, 'error');
     }
   };
 
@@ -249,14 +249,14 @@ export default function DataPage() {
         <div className="mb-8">
           <Breadcrumb items={[{ label: 'data' }]} />
           <ConsoleHeading level={1}>
-            [DATA] Sprint Data Collection
+            Sprint Data Collection
           </ConsoleHeading>
         </div>
 
         {/* Terminal Console */}
         <ConsolePanel className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <ConsoleHeading level={2}>[ ТЕРМИНАЛ ]</ConsoleHeading>
+            <ConsoleHeading level={2}>[ TERMINAL ]</ConsoleHeading>
             <BackendStatus />
           </div>
           
@@ -270,7 +270,7 @@ export default function DataPage() {
               ezreport data collector v1.0
             </div>
             <div className={`${colorScheme.primary} opacity-50 mb-4`}>
-              Введите <span className={colorScheme.secondary}>start {'<board_id>'}</span> для загрузки данных
+              Enter <span className={colorScheme.secondary}>start {'<board_id>'}</span> to load data
             </div>
             
             {/* History */}
@@ -296,7 +296,7 @@ export default function DataPage() {
             {(isRunning || isAnalyzing) && (
               <div className={`flex items-center gap-2 ${colorScheme.primary} animate-pulse`}>
                 <span className="animate-spin">◌</span>
-                <span>{isAnalyzing ? 'AI анализ...' : 'Загрузка...'}</span>
+                <span>{isAnalyzing ? 'AI analysis...' : 'Loading...'}</span>
               </div>
             )}
             
@@ -314,7 +314,7 @@ export default function DataPage() {
                   autoComplete="off"
                   spellCheck={false}
                   disabled={isRunning || isAnalyzing}
-                  placeholder={isRunning || isAnalyzing ? 'Подождите...' : ''}
+                  placeholder={isRunning || isAnalyzing ? 'Please wait...' : ''}
                 />
                 {/* Block cursor */}
                 <span 
@@ -328,7 +328,7 @@ export default function DataPage() {
             
             {/* Hint */}
             <div className={`mt-3 ${colorScheme.primary} opacity-40 text-xs`}>
-              Команды: start {'<board_id>'} | analyze | help | clear
+              Commands: start {'<board_id>'} | analyze | help | clear
             </div>
           </div>
         </ConsolePanel>
@@ -336,12 +336,12 @@ export default function DataPage() {
         {/* Results */}
         <ConsolePanel>
           <div className="flex items-center justify-between mb-4">
-            <ConsoleHeading level={2}>[ ДАННЫЕ ]</ConsoleHeading>
+            <ConsoleHeading level={2}>[ DATA ]</ConsoleHeading>
           </div>
 
           {!collectResponse ? (
             <div className={`${colorScheme.primary} opacity-50 font-mono text-sm`}>
-              [ Выполните команду start {'<board_id>'} для загрузки данных ]
+              [ Run start {'<board_id>'} command to load data ]
             </div>
           ) : basicBoardData ? (
             <div className="space-y-6">
@@ -362,14 +362,14 @@ export default function DataPage() {
               {/* No data warning */}
               {!hasData && (
                 <div className="border border-yellow-500/50 bg-yellow-500/5 p-4">
-                  <div className="text-yellow-500 font-mono text-sm mb-2">⚠️ Данные не загружены</div>
+                  <div className="text-yellow-500 font-mono text-sm mb-2">⚠️ Data not loaded</div>
                   <div className="text-yellow-500/70 font-mono text-xs space-y-1">
-                    <p>Возможные причины:</p>
+                    <p>Possible reasons:</p>
                     <ul className="list-disc list-inside pl-2">
-                      <li>Jira не настроен (проверьте .env файл)</li>
-                      <li>Неверный Board ID</li>
-                      <li>Нет доступа к доске</li>
-                      <li>На доске нет спринтов</li>
+                      <li>Jira not configured (check .env file)</li>
+                      <li>Invalid Board ID</li>
+                      <li>No access to board</li>
+                      <li>No sprints on board</li>
                     </ul>
                   </div>
                 </div>
@@ -381,12 +381,12 @@ export default function DataPage() {
               {/* Two Sprint Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SprintCard
-                  title="[ ПРОШЕДШИЙ СПРИНТ ]"
+                  title="[ PREVIOUS SPRINT ]"
                   data={basicBoardData.previousSprint}
                   variant="previous"
                 />
                 <SprintCard
-                  title="[ ТЕКУЩИЙ СПРИНТ ]"
+                  title="[ CURRENT SPRINT ]"
                   data={basicBoardData.currentSprint}
                   variant="current"
                 />
@@ -394,7 +394,7 @@ export default function DataPage() {
 
               {/* Availability Info */}
               <div className={`${colorScheme.primary} opacity-50 font-mono text-xs`}>
-                Доступность: Previous={basicBoardData.availability.hasPreviousSprint ? '✓' : '✗'},
+                Availability: Previous={basicBoardData.availability.hasPreviousSprint ? '✓' : '✗'},
                 Current={basicBoardData.availability.hasCurrentSprint ? '✓' : '✗'}
               </div>
             </div>

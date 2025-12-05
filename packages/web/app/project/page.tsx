@@ -155,6 +155,144 @@ export default function ProjectPage() {
             </div>
           </div>
 
+          {/* What is EzReport - Pitch Section */}
+          <div className="border border-fuchsia-700/60 bg-black mt-8">
+            {/* Title */}
+            <div className="bg-fuchsia-900/70 text-fuchsia-100 px-4 py-2 font-mono font-bold text-center whitespace-pre">
+{`╔═════════════════════════════════════════╗
+║            WHAT IS EZREPORT             ║
+╚═════════════════════════════════════════╝`}
+            </div>
+
+            <div className="p-6 font-mono space-y-6">
+              {/* Main Description */}
+              <div className="border border-fuchsia-700/30 bg-fuchsia-900/20 p-4">
+                <div className="text-fuchsia-400/90 font-bold mb-3">YOUR AI-POWERED SPRINT REPORTING ENGINE:</div>
+                <div className="text-fuchsia-500/70 text-sm space-y-2">
+                  <p>
+                    EzReport is an intelligent automation platform for sprint reporting, 
+                    built for product, engineering, and business teams that need to show 
+                    project progress <span className="text-fuchsia-400/90 font-bold">quickly</span>, <span className="text-fuchsia-400/90 font-bold">clearly</span>, and <span className="text-fuchsia-400/90 font-bold">professionally</span> — without manual effort.
+                  </p>
+                </div>
+              </div>
+
+              {/* How EzReport Thinks */}
+              <div className="border border-violet-700/30 bg-violet-900/20 p-4">
+                <div className="text-violet-400/90 font-bold mb-3">🧠 HOW EZREPORT THINKS:</div>
+                <div className="text-violet-500/70 text-sm mb-3">
+                  Built-in AI models analyze Jira data the way a human PM would:
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-violet-500/80 font-bold">►</span>
+                    <span className="text-violet-400/80">Identify key results</span>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-violet-500/80 font-bold">►</span>
+                    <span className="text-violet-400/80">Generate clear business insights</span>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-violet-500/80 font-bold">►</span>
+                    <span className="text-violet-400/80">Explain reasons behind delays and non-completed tasks</span>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-violet-500/80 font-bold">►</span>
+                    <span className="text-violet-400/80">Suggest the best demo-ready tasks for partners and stakeholders</span>
+                  </div>
+                </div>
+                <div className="mt-4 text-violet-600/60 text-xs italic">
+                  All output is written in a clean, concise executive business style with no technical jargon.
+                </div>
+              </div>
+
+              {/* Who EzReport Is For */}
+              <div className="border border-cyan-700/30 bg-cyan-900/20 p-4">
+                <div className="text-cyan-400/90 font-bold mb-3">👥 WHO EZREPORT IS FOR:</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-cyan-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-cyan-400/90 font-bold">Product Teams</span>
+                      <span className="text-cyan-600/60"> — produce consistent, high-quality reports for leadership.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-cyan-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-cyan-400/90 font-bold">Outsourcing Teams</span>
+                      <span className="text-cyan-600/60"> — clearly demonstrate progress to clients.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-cyan-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-cyan-400/90 font-bold">Startups</span>
+                      <span className="text-fuchsia-500/70 text-xs ml-2 px-1.5 py-0.5 border border-fuchsia-600/40 bg-fuchsia-900/30">we are here</span>
+                      <span className="text-cyan-600/60"> — keep investors aligned with transparent updates.</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-cyan-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-cyan-400/90 font-bold">Enterprise</span>
+                      <span className="text-cyan-600/60"> — unify reporting standards across multiple teams and departments.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Why It Matters */}
+              <div className="border border-amber-700/40 bg-amber-900/20 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl opacity-70">⚡</span>
+                  <div>
+                    <div className="text-amber-500/80 font-bold">WHY IT MATTERS</div>
+                    <div className="text-amber-600/60 text-sm">
+                      EzReport saves <span className="text-amber-500/80 font-bold">hours of manual work</span>, 
+                      removes subjectivity from reporting, and makes the entire process 
+                      <span className="text-amber-500/80 font-bold"> fast, transparent, and effortless</span> for everyone involved.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tagline */}
+              <div className="border border-fuchsia-700/40 bg-fuchsia-900/30 p-4 text-center">
+                <div className="text-fuchsia-500/80 text-sm">
+                  It&apos;s your personal <span className="text-fuchsia-300/90 font-bold">AI Product Manager</span> —
+                  <span className="text-fuchsia-600/60"> turning the chaos of Jira into a clear, structured story of progress.</span>
+                </div>
+              </div>
+
+              {/* Retro Vintage Slogan */}
+              <div className="text-center py-6">
+                {/* Decorative dots */}
+                <div className="text-amber-600/40 text-xs tracking-[0.3em] mb-3">
+                  ● ● ● ● ● ● ● ● ● ● ● ●
+                </div>
+                <div 
+                  className="text-lg md:text-xl lg:text-2xl font-black uppercase"
+                  style={{
+                    fontFamily: 'Georgia, Times New Roman, serif',
+                    color: '#f59e0b',
+                    textShadow: '2px 2px 0 #92400e, 3px 3px 0 #78350f, 1px 1px 0 #fcd34d',
+                    letterSpacing: '0.06em',
+                    WebkitTextStroke: '0.5px #b45309',
+                  }}
+                >
+                  Make Your Data Great Again
+                </div>
+                {/* Decorative line */}
+                <div className="flex items-center justify-center gap-3 mt-3">
+                  <div className="h-px w-12 bg-gradient-to-r from-transparent to-amber-600/50" />
+                  <span className="text-amber-600/60 text-xs">★</span>
+                  <div className="h-px w-12 bg-gradient-to-l from-transparent to-amber-600/50" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Contributor Program Section */}
           <div className="border border-teal-700/60 bg-black mt-8">
             {/* Title */}
@@ -317,7 +455,7 @@ export default function ProjectPage() {
                   <div>
                     <span className="text-emerald-400/80 font-bold">Contact me</span>
                     <span className="text-emerald-600/50"> — reach out via </span>
-                    <a href="https://t.me/anatolykuzmin" target="_blank" rel="noopener noreferrer" className="text-emerald-400/80 hover:text-emerald-300 underline">Telegram @anatolykuzmin</a>
+                    <a href="https://t.me/centimeter19" target="_blank" rel="noopener noreferrer" className="text-emerald-400/80 hover:text-emerald-300 underline">Telegram @centimeter19</a>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 text-sm">
