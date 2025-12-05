@@ -21,11 +21,15 @@ import type {
   VersionMeta,
   BasicBoardSprintData,
   StrategicAnalysis,
+  PublishToNotionParams,
+  PublishToNotionResponse,
 } from '@ezreport/shared';
 
 import { collectBasicBoardSprintData, performStrategicAnalysis } from './services/collectBasicBoardSprintData';
 import { generatePartnerReportMarkdown } from './services/partnerReport';
 import { generateExpertAnalysis, ExpertAnalysisParams } from './ai/expertAnalyzer';
+import { notionClient } from './notion/client';
+import { isNotionConfigured } from './config';
 import { logger } from './utils/logger';
 
 // =============================================================================
@@ -325,6 +329,60 @@ app.post('/api/expert-analysis', async (req: Request, res: Response) => {
   }
 });
 
+// Publish report to Notion
+app.post('/api/publish-notion', async (req: Request, res: Response) => {
+  const params = req.body as PublishToNotionParams;
+  
+  clearLogs();
+  addLog('Publishing to Notion...');
+
+  try {
+    if (!params.title || !params.markdown) {
+      res.status(400).json({ 
+        error: 'Title and markdown content are required.',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    if (!isNotionConfigured()) {
+      res.status(400).json({ 
+        error: 'Notion is not configured. Please set NOTION_API_KEY and NOTION_PARENT_PAGE_ID environment variables.',
+        logs: [...logs],
+      });
+      return;
+    }
+
+    addLog(`Title: ${params.title}`);
+    addLog(`Markdown length: ${params.markdown.length} chars`);
+
+    // Create Notion page from markdown
+    const page = await notionClient.createPageFromMarkdown({
+      title: params.title,
+      markdown: params.markdown,
+    });
+
+    addLog(`Notion page created: ${page.url}`);
+
+    const response: PublishToNotionResponse = {
+      pageId: page.id,
+      pageUrl: page.url,
+      logs: [...logs],
+    };
+
+    res.json(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`ERROR: ${message}`);
+    logger.error('Publish to Notion failed', { error: message });
+
+    res.status(500).json({
+      error: message,
+      logs: [...logs],
+    });
+  }
+});
+
 // =============================================================================
 // Start Server
 // =============================================================================
@@ -340,5 +398,6 @@ app.listen(PORT, () => {
   console.log(`  POST /api/analyze-data    - Step 2: AI analysis of collected data`);
   console.log(`  POST /api/expert-analysis - Expert analysis (CTO/CPO/CFO perspectives)`);
   console.log(`  POST /api/generate-report - Step 3: Generate report from state`);
+  console.log(`  POST /api/publish-notion  - Step 4: Publish report to Notion`);
   console.log(`\nMOCK_MODE: ${process.env.MOCK_MODE === 'true' ? 'ON' : 'OFF'}\n`);
 });

@@ -68,6 +68,8 @@ export type {
   CollectDataResponse,
   GenerateReportResponse,
   AnalyzeResponse,
+  PublishToNotionParams,
+  PublishToNotionResponse,
 } from './api';
 
 
