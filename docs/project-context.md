@@ -2,85 +2,201 @@
 
 ## 1. High-level Project Description
 
-This repo contains a Node.js + TypeScript CLI tool that automates creation of sprint reports in Notion using data from Jira and AI-generated text.
+This repo contains a Node.js + TypeScript monorepo with three main packages:
 
-The tool helps product/engineering teams generate clear, partner-ready sprint reports without manual copy-paste work.
+1. **CLI (`packages/cli`)** — Command-line tool and HTTP server for sprint report generation
+2. **Web Console (`packages/web`)** — Terminal-style Next.js web interface
+3. **Shared (`packages/shared`)** — Shared TypeScript types
 
-## 2. What the CLI Does
+The tool helps product/engineering teams generate clear, partner-ready sprint reports in Notion using data from Jira and AI-generated text, without manual copy-paste work.
 
-The CLI:
-- fetches sprint issues from Jira (by sprint name or ID),
-- aggregates and normalizes them into internal domain types (`SprintIssue`),
-- selects 2–3 demo issues that are good for showcasing to partners (Done, have artifacts, high impact),
-- calls an AI model (OpenAI) to generate structured text sections:
-  - Sprint summary
-  - What was done
-  - What was not done and why
-  - Demo section with highlights
-- creates a Notion page with separate sections/blocks based on this data.
+## 2. What the Backend Does
 
-There is also a MOCK mode:
-- when `MOCK_MODE=true`, the tool uses fake Jira issues, fake AI text, and simulates Notion page creation.
-- this allows us to develop and test the pipeline without real API calls.
+The backend (`packages/cli`):
+- Fetches sprint issues from Jira (by board ID)
+- Aggregates and normalizes them into internal domain types (`SprintIssue`, `SprintCardData`)
+- Runs AI-powered strategic analysis (goal alignment, demo recommendations)
+- Generates partner-ready markdown reports
+- Optionally creates a Notion page with the report
+
+There is a **MOCK mode**:
+- When `MOCK_MODE=true`, the tool uses fake Jira issues, fake AI text
+- This allows development and testing without real API calls
 
 ## 3. Domain Types
 
-The main domain types in the codebase are:
+The main domain types are defined in `@ezreport/shared`:
 
-- `SprintIssue` — normalized representation of a Jira issue for sprint reporting:
-  - `key`, `summary`, `status`, `statusCategory`, `storyPoints`, `assignee`, `artifact`.
-- `SprintReportStructured` — the structured result of AI generation:
-  - `version`, `sprint`, `overview`, `notDone`, `achievements`, `artifacts`, `nextSprint`, `blockers`, `pmQuestions`.
-- `NotionPageResult` — the result of creating a Notion page:
-  - `id`, `url`.
-
-The pipeline operates only on these domain types. Integration details with Jira/Notion/OpenAI are hidden behind adapters that map raw API responses to these types.
+- `SprintMeta` — Sprint metadata (id, name, dates, goal, state)
+- `SprintIssue` — Normalized Jira issue (key, summary, status, storyPoints, artifact)
+- `SprintCardData` — Sprint + issues + goal match assessment
+- `BasicBoardSprintData` — Board data with previous and current sprints
+- `VersionMeta` — Product version info (name, releaseDate, progress)
+- `StrategicAnalysis` — AI analysis result (alignments, scores, demo recommendations)
 
 ## 4. Current Goals for This Tool
 
-- Make sprint reporting fast and consistent.
-- Provide partner-facing, human-readable summaries in Russian without manual copy-paste.
-- Keep integration details (Jira, Notion, OpenAI) decoupled from the reporting logic, so we can:
-  - change field mappings,
-  - adjust prompts and AI behavior,
-  - or swap tools, without rewriting the pipeline.
+- Make sprint reporting fast and consistent
+- Provide partner-facing, human-readable summaries in Russian
+- Keep integration details (Jira, OpenAI) decoupled from the reporting logic
 
 ## 5. Report Template
 
-The generated Notion page follows a specific template in Russian:
-1. **Версия** — Version info callout (number, deadline, goal, progress %)
-2. **Спринт** — Sprint info callout (number, dates, goal, progress %)
-3. **Отчет по итогам реализованного спринта**
-   - Overview спринта (5-10 sentences)
-   - Не реализовано в прошедшем спринте
-   - Ключевые достижения, выводы и инсайты спринта
-4. **Артефакты по итогам реализованного спринта**
-5. **Планирование следующего спринта** (+ blockers)
-6. **Вопросы и предложения от Product Manager**
+The generated report follows a specific template in Russian:
+1. **Версия** — Version info (number, deadline, goal, progress %)
+2. **Спринт** — Sprint info (number, dates, goal, progress %)
+3. **Overview спринта** — 2-3 paragraphs summary
+4. **Ключевые достижения** — Key achievements
+5. **Не реализовано** — What was not done and why
+6. **Артефакты** — Demo links, artifacts
+7. **Планирование следующего спринта** — Next sprint planning
+8. **Блокеры** — Blockers if any
+9. **Вопросы от PM** — PM questions/proposals
 
-## 6. Practices for Using AI in This Repo
+## 6. Backend Architecture
+
+### REST API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/ping` | Health check |
+| `POST /api/collect-data` | Collect sprint data from Jira (no AI) |
+| `POST /api/analyze-data` | AI analysis of provided data |
+| `POST /api/analyze` | Collect + AI analysis |
+| `POST /api/generate-report` | Full cycle: collect → analyze → report |
+
+### Data Flow
+
+```
+1. /api/collect-data
+   Jira API → collectBasicBoardSprintData() → BasicBoardSprintData
+
+2. /api/analyze-data  
+   BasicBoardSprintData → strategicAnalyzer (OpenAI) → StrategicAnalysis
+
+3. /api/generate-report
+   BasicBoardSprintData + StrategicAnalysis → partnerReport (OpenAI) → Markdown
+```
+
+### Module Structure
+
+```
+packages/cli/src/
+├── server.ts          # HTTP server (Express)
+├── index.ts           # CLI entry point
+├── config.ts          # Environment configuration
+├── services/
+│   ├── collectBasicBoardSprintData.ts  # Jira data collection
+│   ├── partnerReport.ts                # Report generation
+│   ├── sprintReport.ts                 # CLI-only workflow
+│   └── demoSelector.ts                 # Demo issue selection
+├── ai/
+│   ├── strategicAnalyzer.ts   # AI analysis
+│   ├── openaiClient.ts        # OpenAI wrapper
+│   └── prompts/               # Prompt templates
+├── jira/
+│   ├── boardFetcher.ts        # Board/sprint fetching
+│   ├── client.ts              # Jira HTTP client
+│   └── types.ts               # Jira API types
+├── notion/
+│   ├── client.ts              # Notion API client
+│   └── builder.ts             # Page builder
+└── mocks/
+    └── sprintMocks.ts         # Mock data generators
+```
+
+## 7. Web Console (`packages/web`)
+
+A terminal-style Next.js web interface for the sprint report workflow.
+
+### Pages
+
+| Page | Description |
+|------|-------------|
+| `/` | Home navigation |
+| `/data` | Data collection + AI analysis |
+| `/analyse` | Report generation preview |
+| `/report` | Final report display |
+
+### Key Components
+
+- `ConsolePanel`, `ConsoleHeading`, etc. — Terminal-style UI primitives
+- `SprintCard`, `VersionCard` — Sprint/version data display
+- `AnalysisPanel` — AI analysis results display
+
+### API Client
+
+Located in `lib/apiClient.ts`:
+- `ping()` — Health check
+- `collectData()` — Fetch sprint data
+- `analyzeData()` — Run AI analysis
+- `generateReport()` — Generate full report
+
+## 8. Practices for Using AI in This Repo
 
 When using AI (Cursor / LLMs) to modify this repo:
 
-- **Always respect the domain types:**
-  - Keep `SprintIssue`, `SprintReportStructured`, and `NotionPageResult` as central abstractions.
-  - Map external APIs into these types in a single place (Jira client, OpenAI client, Notion client).
-- **Do not spread raw Jira/Notion/OpenAI response shapes across the code.**
-- **Keep business logic (selection of demo issues, report structure) separate from HTTP/integration logic.**
-- If you change report structure or prompts, update this doc and the typing accordingly.
-- Prefer small, focused modules and explicit logging for the pipeline steps.
-- **Type safety**: Functions like `toSprintIssue()` convert raw API types (e.g., `ParsedJiraIssue`) to domain types (`SprintIssue`). Never call conversion functions on already-converted domain objects.
+- **Always respect the domain types** from `@ezreport/shared`
+- **Keep business logic separate** from HTTP/integration logic
+- **Do not spread raw API response shapes** across the code
+- Map external APIs to domain types in a single place
+- Prefer small, focused modules with explicit logging
+- **Type safety**: Use conversion functions (`toSprintMeta`, `toSprintIssue`) at integration boundaries
 
-This document is the single source of truth for the project context and should be kept up to date when the overall purpose or architecture of the tool changes.
+## 9. Project Structure
 
-## 7. Workflow for AI-powered Sprint Report Generation
+```
+ezreport/
+├── packages/
+│   ├── cli/                    # CLI tool + HTTP server
+│   │   ├── src/
+│   │   │   ├── index.ts        # CLI entry point
+│   │   │   ├── server.ts       # HTTP server
+│   │   │   ├── config.ts       # Configuration
+│   │   │   ├── services/       # Business logic
+│   │   │   ├── ai/             # OpenAI integration
+│   │   │   ├── jira/           # Jira integration
+│   │   │   ├── notion/         # Notion integration
+│   │   │   └── mocks/          # Test data
+│   │   └── package.json
+│   │
+│   ├── shared/                 # Shared types
+│   │   ├── src/types/          # Type definitions
+│   │   └── package.json
+│   │
+│   └── web/                    # Web console (Next.js)
+│       ├── app/                # Next.js pages
+│       ├── components/         # UI components
+│       ├── lib/                # API client, utils
+│       └── package.json
+│
+└── docs/
+    ├── project-context.md      # This file
+    └── api-contracts.md        # API documentation
+```
 
-The sprint report generation follows a three-stage workflow implemented in `src/services/sprintReportWorkflow.ts`:
+## 10. Running the Project
 
-1. **Data Collection & Validation** — Fetches sprint data from Jira, converts to domain types (`SprintInfo`, `SprintIssue`), validates required fields, and uses AI to assess how well the sprint issues match the declared sprint goal (`goalIssueMatchLevel`).
+### Backend (HTTP Server)
 
-2. **Block-by-block Report Generation** — Each section of `SprintReportStructured` is generated via a separate AI prompt. Prompt builders are located in `src/ai/prompts/sprintReportPrompts.ts`. This allows fine-grained control over each report block (version, sprint, overview, notDone, achievements, artifacts, nextSprint, blockers, pmQuestions).
+```bash
+cd packages/cli
+npm run server       # Real APIs
+npm run server:mock  # Mock mode (no real API calls)
+```
 
-3. **Final Report Validation** — Checks structure completeness, Russian language presence, placeholder detection, data consistency (sprint numbers, dates, progress), and uses AI for partner-readiness assessment.
+### Web Console
 
-The workflow is orchestrated by `runSprintReportWorkflow()` which stops early if validation fails at any stage. The CLI defaults to this workflow; use `--legacy` flag for the old single-prompt pipeline.
+```bash
+cd packages/web
+npm run dev          # Development server on port 3000
+```
+
+### CLI
+
+```bash
+cd packages/cli
+npm run sprint-report -- --sprint="Sprint 5"
+npm run sprint-report -- --sprint="Sprint 5" --dry-run
+npm run sprint-report:test  # E2E test mode
+```

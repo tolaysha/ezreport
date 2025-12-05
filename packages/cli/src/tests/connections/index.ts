@@ -8,7 +8,7 @@
 import { logger } from '../../utils/logger';
 
 import { testJiraConnection, type JiraConnectionTestResult } from './jira.test';
-import { testJiraDataFetch, listJiraBoards, type JiraDataTestResult } from './jira-data.test';
+import { testJiraDataFetch, testJiraVersions, listJiraBoards, type JiraDataTestResult, type JiraVersionTestResult } from './jira-data.test';
 import { testNotionConnection, type NotionConnectionTestResult } from './notion.test';
 import { testOpenAIConnection, type OpenAIConnectionTestResult } from './openai.test';
 
@@ -19,6 +19,7 @@ import { testOpenAIConnection, type OpenAIConnectionTestResult } from './openai.
 export type ConnectionTestResult =
   | JiraConnectionTestResult
   | JiraDataTestResult
+  | JiraVersionTestResult
   | NotionConnectionTestResult
   | OpenAIConnectionTestResult;
 
@@ -144,6 +145,34 @@ function printResult(result: ConnectionTestResult): void {
         }
       }
     }
+    // Version details
+    if ('projectKey' in details && details.projectKey) {
+      printDetail('Проект', `${details.projectName ?? ''} (${details.projectKey})`);
+    }
+    if ('totalVersions' in details) {
+      printDetail('Версии', `${details.totalVersions} всего (${details.releasedVersions ?? 0} выпущено, ${details.unreleasedVersions ?? 0} в работе)`);
+    }
+    if ('activeVersion' in details && details.activeVersion) {
+      const version = details.activeVersion;
+      console.log();
+      console.log(`  ${COLORS.bright}🎯 Активная версия: ${version.name}${COLORS.reset}`);
+      if (version.description) {
+        console.log(`    ${COLORS.dim}Описание:${COLORS.reset} ${version.description}`);
+      }
+      if (version.releaseDate) {
+        console.log(`    ${COLORS.dim}Дата релиза:${COLORS.reset} ${version.releaseDate}`);
+      }
+      console.log(`    ${COLORS.dim}Прогресс:${COLORS.reset} ${version.progressPercent}%`);
+    }
+    if ('allVersions' in details && details.allVersions && details.allVersions.length > 0) {
+      console.log();
+      console.log(`  ${COLORS.dim}Все версии:${COLORS.reset}`);
+      for (const v of details.allVersions) {
+        const status = v.released ? `${COLORS.green}✓${COLORS.reset}` : `${COLORS.yellow}○${COLORS.reset}`;
+        const date = v.releaseDate ? ` (${v.releaseDate})` : '';
+        console.log(`    ${status} ${v.name}${date}`);
+      }
+    }
     if ('parentPageId' in details && details.parentPageId) {
       printDetail('Parent Page ID', details.parentPageId);
     }
@@ -172,13 +201,15 @@ function printResult(result: ConnectionTestResult): void {
  * Запускает тест соединения для указанного сервиса.
  */
 export async function runConnectionTest(
-  service: 'jira' | 'jira-data' | 'notion' | 'openai',
+  service: 'jira' | 'jira-data' | 'jira-versions' | 'notion' | 'openai',
 ): Promise<ConnectionTestResult> {
   switch (service) {
     case 'jira':
       return testJiraConnection();
     case 'jira-data':
       return testJiraDataFetch();
+    case 'jira-versions':
+      return testJiraVersions();
     case 'notion':
       return testNotionConnection();
     case 'openai':
@@ -248,13 +279,16 @@ async function main(): Promise<void> {
   }
 
   // Определяем какие тесты запускать
-  const services: Array<'jira' | 'jira-data' | 'notion' | 'openai'> = [];
+  const services: Array<'jira' | 'jira-data' | 'jira-versions' | 'notion' | 'openai'> = [];
 
   if (args.includes('--jira') || args.includes('-j')) {
     services.push('jira');
   }
   if (args.includes('--jira-data') || args.includes('-jd')) {
     services.push('jira-data');
+  }
+  if (args.includes('--jira-versions') || args.includes('-jv')) {
+    services.push('jira-versions');
   }
   if (args.includes('--notion') || args.includes('-n')) {
     services.push('notion');
@@ -329,7 +363,7 @@ if (require.main === module) {
 
 // Экспорты
 export { testJiraConnection } from './jira.test';
-export { testJiraDataFetch, listJiraBoards } from './jira-data.test';
+export { testJiraDataFetch, testJiraVersions, listJiraBoards } from './jira-data.test';
 export { testNotionConnection } from './notion.test';
 export { testOpenAIConnection } from './openai.test';
 

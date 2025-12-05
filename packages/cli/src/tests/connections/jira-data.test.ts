@@ -271,3 +271,232 @@ export async function listJiraBoards(): Promise<{
   }
 }
 
+// =============================================================================
+// Version Types & Test
+// =============================================================================
+
+export interface JiraVersion {
+  id: string;
+  name: string;
+  description?: string;
+  releaseDate?: string;
+  released: boolean;
+  archived: boolean;
+}
+
+export interface JiraVersionTestResult {
+  service: 'Jira Versions';
+  success: boolean;
+  message: string;
+  details?: {
+    projectKey: string;
+    projectName?: string;
+    totalVersions: number;
+    releasedVersions: number;
+    unreleasedVersions: number;
+    activeVersion?: {
+      id: string;
+      name: string;
+      description?: string;
+      releaseDate?: string;
+      progressPercent: number;
+    };
+    allVersions?: Array<{
+      name: string;
+      released: boolean;
+      releaseDate?: string;
+    }>;
+  };
+  error?: string;
+}
+
+/**
+ * Тестирует получение версий (релизов) из Jira.
+ *
+ * Проверяет:
+ * - Получение проекта, связанного с доской
+ * - Список версий проекта
+ * - Выбор активной версии
+ * - Подсчёт прогресса по задачам
+ */
+export async function testJiraVersions(): Promise<JiraVersionTestResult> {
+  const baseResult: JiraVersionTestResult = {
+    service: 'Jira Versions',
+    success: false,
+    message: '',
+  };
+
+  // Проверка конфигурации
+  if (!isJiraConfigured()) {
+    return {
+      ...baseResult,
+      message: 'Конфигурация Jira не задана',
+      error: 'Отсутствуют JIRA_BASE_URL, JIRA_EMAIL или JIRA_API_TOKEN',
+    };
+  }
+
+  if (!JIRA_CONFIG.boardId) {
+    return {
+      ...baseResult,
+      message: 'JIRA_BOARD_ID не задан',
+      error: 'Укажите JIRA_BOARD_ID в .env файле',
+    };
+  }
+
+  const auth = getAuthHeader();
+  const headers = {
+    Authorization: `Basic ${auth}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // 1. Получаем проект для доски
+    const projectResponse = await axios.get(
+      `${JIRA_CONFIG.baseUrl}/rest/agile/1.0/board/${JIRA_CONFIG.boardId}/project`,
+      { headers, timeout: 10000 },
+    );
+
+    const projects = projectResponse.data.values;
+    if (!projects || projects.length === 0) {
+      return {
+        ...baseResult,
+        message: 'Нет проектов, связанных с доской',
+        error: `Доска ${JIRA_CONFIG.boardId} не связана ни с одним проектом`,
+      };
+    }
+
+    const project = projects[0];
+    const projectKey = project.key;
+    const projectName = project.name;
+
+    // 2. Получаем версии проекта
+    const versionsResponse = await axios.get<JiraVersion[]>(
+      `${JIRA_CONFIG.baseUrl}/rest/api/3/project/${projectKey}/versions`,
+      { headers, timeout: 10000 },
+    );
+
+    const versions = versionsResponse.data;
+    const releasedVersions = versions.filter(v => v.released);
+    const unreleasedVersions = versions.filter(v => !v.released && !v.archived);
+
+    // 3. Выбираем активную версию
+    let activeVersionInfo: JiraVersionTestResult['details'];
+    let activeVersion: JiraVersion | null = null;
+
+    // Ищем нерелизнутую версию с ближайшей датой релиза
+    const withDates = unreleasedVersions.filter(v => v.releaseDate);
+    if (withDates.length > 0) {
+      withDates.sort((a, b) => {
+        const dateA = new Date(a.releaseDate!).getTime();
+        const dateB = new Date(b.releaseDate!).getTime();
+        return dateA - dateB;
+      });
+      activeVersion = withDates[0];
+    } else if (unreleasedVersions.length > 0) {
+      activeVersion = unreleasedVersions[0];
+    }
+
+    // 4. Подсчитываем прогресс для активной версии
+    let progressPercent = 0;
+    let totalIssues = 0;
+    let doneIssues = 0;
+    if (activeVersion) {
+      try {
+        // Escape version name for JQL (wrap in quotes)
+        const escapedName = `"${activeVersion.name.replace(/"/g, '\\"')}"`;
+        
+        const totalResponse = await axios.post<{ total: number }>(
+          `${JIRA_CONFIG.baseUrl}/rest/api/3/search/jql`,
+          {
+            jql: `fixVersion = ${escapedName}`,
+            maxResults: 1,
+            fields: ['key'],
+          },
+          { headers, timeout: 10000 },
+        );
+
+        const doneResponse = await axios.post<{ total: number }>(
+          `${JIRA_CONFIG.baseUrl}/rest/api/3/search/jql`,
+          {
+            jql: `fixVersion = ${escapedName} AND statusCategory = Done`,
+            maxResults: 1,
+            fields: ['key'],
+          },
+          { headers, timeout: 10000 },
+        );
+
+        totalIssues = totalResponse.data.total;
+        doneIssues = doneResponse.data.total;
+        progressPercent = totalIssues > 0 ? Math.round((doneIssues / totalIssues) * 100) : 0;
+      } catch {
+        // Ignore progress calculation errors
+      }
+    }
+
+    // Формируем результат
+    activeVersionInfo = {
+      projectKey,
+      projectName,
+      totalVersions: versions.length,
+      releasedVersions: releasedVersions.length,
+      unreleasedVersions: unreleasedVersions.length,
+      activeVersion: activeVersion ? {
+        id: activeVersion.id,
+        name: activeVersion.name,
+        description: activeVersion.description,
+        releaseDate: activeVersion.releaseDate,
+        progressPercent,
+      } : undefined,
+      allVersions: versions.map(v => ({
+        name: v.name,
+        released: v.released,
+        releaseDate: v.releaseDate,
+      })),
+    };
+
+    let message = `Проект: ${projectName} (${projectKey}). `;
+    message += `Версий: ${versions.length} (${releasedVersions.length} выпущено, ${unreleasedVersions.length} в работе). `;
+    if (activeVersion) {
+      message += `Активная: "${activeVersion.name}" (${doneIssues}/${totalIssues} задач, ${progressPercent}%)`;
+    } else {
+      message += 'Активная версия не найдена';
+    }
+
+    return {
+      service: 'Jira Versions',
+      success: true,
+      message,
+      details: activeVersionInfo,
+    };
+  } catch (error) {
+    let errorMessage = 'Неизвестная ошибка';
+
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          errorMessage = 'Ошибка авторизации (401). Проверьте JIRA_API_TOKEN';
+        } else if (status === 403) {
+          errorMessage = 'Доступ запрещён (403). Нет прав на проект или версии';
+        } else if (status === 404) {
+          errorMessage = 'Ресурс не найден (404). Проверьте JIRA_BOARD_ID';
+        } else {
+          errorMessage = `HTTP ошибка ${status}: ${error.response.statusText}`;
+        }
+      } else if (error.code === 'ETIMEDOUT') {
+        errorMessage = 'Таймаут соединения';
+      } else {
+        errorMessage = error.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    return {
+      ...baseResult,
+      message: 'Не удалось получить версии из Jira',
+      error: errorMessage,
+    };
+  }
+}
+

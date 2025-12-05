@@ -1,0 +1,16 @@
+{
+  "name": "@ezreport/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for EzReport",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
+
+
