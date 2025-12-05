@@ -293,6 +293,260 @@ export default function ProjectPage() {
             </div>
           </div>
 
+          {/* Product Success Strategy Section */}
+          <div className="border border-indigo-700/60 bg-black mt-8">
+            {/* Title */}
+            <div className="bg-indigo-900/70 text-indigo-100 px-4 py-2 font-mono font-bold text-center whitespace-pre">
+{`╔═════════════════════════════════════════╗
+║   🚀 PRODUCT SUCCESS STRATEGY           ║
+╚═════════════════════════════════════════╝`}
+            </div>
+
+            <div className="p-6 font-mono space-y-6">
+              {/* Key Insight */}
+              <div className="border border-indigo-700/30 bg-indigo-900/20 p-4">
+                <div className="text-indigo-400/90 font-bold mb-3">📊 KEY STRATEGIC INSIGHT:</div>
+                <div className="text-indigo-500/70 text-sm">
+                  <p>
+                    Стратегия глобального роста требует <span className="text-indigo-400/90 font-bold">баланса между видением и фокусом</span>. 
+                    Масштабирование без потери качества — основа устойчивого развития продукта.
+                  </p>
+                </div>
+              </div>
+
+              {/* Strategy Pillars */}
+              <div className="border border-blue-700/30 bg-blue-900/20 p-4">
+                <div className="text-blue-400/90 font-bold mb-4">🎯 STRATEGIC PILLARS:</div>
+                <div className="space-y-4">
+                  {/* Delivery Model */}
+                  <div className="flex items-start gap-3 text-sm border-b border-blue-700/20 pb-3">
+                    <span className="text-blue-500/80 font-bold text-lg">01</span>
+                    <div>
+                      <span className="text-blue-400/90 font-bold">Модель поставки</span>
+                      <div className="text-blue-600/60 mt-1">
+                        Основной упор на <span className="text-blue-400/80 font-bold">SaaS</span> — масштабируемость и предсказуемый revenue. 
+                        Кастомные решения — только по необходимости для enterprise-клиентов.
+                      </div>
+                    </div>
+                  </div>
+                  {/* Segment Focus */}
+                  <div className="flex items-start gap-3 text-sm border-b border-blue-700/20 pb-3">
+                    <span className="text-blue-500/80 font-bold text-lg">02</span>
+                    <div>
+                      <span className="text-blue-400/90 font-bold">Фокус сегментов</span>
+                      <div className="text-blue-600/60 mt-1 flex items-center flex-wrap gap-2">
+                        <span className="px-2 py-0.5 bg-blue-800/40 border border-blue-600/40 text-blue-300/80">Стартапы</span>
+                        <span className="text-blue-500/60">+</span>
+                        <span className="px-2 py-0.5 bg-blue-800/40 border border-blue-600/40 text-blue-300/80">Агентства</span>
+                        <span className="text-blue-500/60">→</span>
+                        <span className="px-2 py-0.5 bg-indigo-800/40 border border-indigo-600/40 text-indigo-300/80">Enterprise</span>
+                        <span className="text-blue-500/60">→</span>
+                        <span className="px-2 py-0.5 bg-violet-800/40 border border-violet-600/40 text-violet-300/80">Gov</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Integrations */}
+                  <div className="flex items-start gap-3 text-sm border-b border-blue-700/20 pb-3">
+                    <span className="text-blue-500/80 font-bold text-lg">03</span>
+                    <div>
+                      <span className="text-blue-400/90 font-bold">Интеграции</span>
+                      <div className="text-blue-600/60 mt-1">
+                        Сначала завершаем <span className="text-blue-400/80 font-bold">Jira</span> на 100%, 
+                        затем расширяемся по спросу: Linear, Asana, ClickUp, Monday.
+                      </div>
+                    </div>
+                  </div>
+                  {/* Budget */}
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-blue-500/80 font-bold text-lg">04</span>
+                    <div>
+                      <span className="text-blue-400/90 font-bold">Бюджет первого года</span>
+                      <div className="text-blue-600/60 mt-1">
+                        Инвестиция в <span className="text-blue-400/80 font-bold">продукт</span>, а не в доход. 
+                        Фокус на product-market fit и построение core value.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Growth Philosophy */}
+              <div className="border border-sky-600/40 bg-gradient-to-br from-sky-900/25 to-indigo-900/20 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl opacity-70">🚀</span>
+                  <div>
+                    <div className="text-sky-400/90 font-bold mb-2">ФИЛОСОФИЯ РОСТА</div>
+                    <div className="text-sky-500/70 text-sm leading-relaxed">
+                      Развивайтесь <span className="text-sky-400/90 font-bold">постепенно</span>, удовлетворяя потребности первой группы пользователей. 
+                      Используйте их <span className="text-sky-400/90 font-bold">отзывы как ориентир</span> для дальнейшего роста.
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-sky-700/30">
+                      <div className="text-sky-400/60 text-xs italic">
+                        &quot;Так вы сможете уверенно двигаться к глобальному успеху продукта.&quot;
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Strategic Upgrade v1.2 Section */}
+          <div className="border border-green-700/60 bg-black mt-8">
+            {/* Title */}
+            <div className="bg-green-900/70 text-green-100 px-4 py-2 font-mono font-bold text-center whitespace-pre">
+{`╔═════════════════════════════════════════╗
+║    💸 STRATEGIC UPGRADE: v1.2 PLAN      ║
+╚═════════════════════════════════════════╝`}
+            </div>
+
+            <div className="p-6 font-mono space-y-6">
+              {/* Proven Value */}
+              <div className="border border-green-700/30 bg-green-900/20 p-4">
+                <div className="text-green-400/90 font-bold mb-3">📈 PROVEN MARKET FIT:</div>
+                <div className="text-green-500/70 text-sm space-y-2">
+                  <p>
+                    EzReport has <span className="text-green-400/90 font-bold">validated its core value proposition</span>: 
+                    automating the tedious process of sprint reporting and transforming raw Jira data 
+                    into <span className="text-green-400/90 font-bold">structured, investor-ready reports</span>.
+                  </p>
+                  <p className="text-green-600/60 mt-2">
+                    The next milestone: scale the product for enterprise teams and unlock new revenue streams.
+                  </p>
+                </div>
+              </div>
+
+              {/* v1.2 Features */}
+              <div className="border border-lime-700/30 bg-lime-900/20 p-4">
+                <div className="text-lime-400/90 font-bold mb-3">🔧 WHAT&apos;S INCLUDED IN v1.2:</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-lime-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-lime-400/90 font-bold">Sprint Evaluation Validation</span>
+                      <span className="text-lime-600/60"> — AI-powered sprint health checks and anomaly detection</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-lime-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-lime-400/90 font-bold">Custom Input Fields</span>
+                      <span className="text-lime-600/60"> — user-defined parameters for tailored report queries</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-lime-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-lime-400/90 font-bold">Custom Report Templates</span>
+                      <span className="text-lime-600/60"> — flexible report builder for diverse stakeholder needs</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-lime-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-lime-400/90 font-bold">Alerting System</span>
+                      <span className="text-lime-600/60"> — proactive warnings, error notifications, and deadline tracking</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <span className="text-lime-500/80 font-bold">►</span>
+                    <div>
+                      <span className="text-lime-400/90 font-bold">Artifact Viewer</span>
+                      <span className="text-lime-600/60"> — display files, demos, and deliverables directly in reports</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Development Timeline */}
+              <div className="border border-emerald-700/30 bg-emerald-900/20 p-4">
+                <div className="text-emerald-400/90 font-bold mb-4">⏱️ DEVELOPMENT TIMELINE TO v1.2:</div>
+                <div className="space-y-4">
+                  {/* Milestone 1 */}
+                  <div className="border-l-2 border-emerald-500/50 pl-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-emerald-400/90 font-bold">AI & Validation Layer</span>
+                      <span className="text-emerald-500/70 text-sm">~3 weeks</span>
+                    </div>
+                    <div className="text-emerald-600/60 text-sm">
+                      Sprint health checks, anomaly detection, improved prompt engineering
+                    </div>
+                  </div>
+                  {/* Milestone 2 */}
+                  <div className="border-l-2 border-lime-500/50 pl-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-lime-400/90 font-bold">Customization Engine</span>
+                      <span className="text-lime-500/70 text-sm">~4 weeks</span>
+                    </div>
+                    <div className="text-lime-600/60 text-sm">
+                      Custom input fields, flexible report templates, user-defined parameters
+                    </div>
+                  </div>
+                  {/* Milestone 3 */}
+                  <div className="border-l-2 border-teal-500/50 pl-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-teal-400/90 font-bold">Notifications & Media</span>
+                      <span className="text-teal-500/70 text-sm">~3 weeks</span>
+                    </div>
+                    <div className="text-teal-600/60 text-sm">
+                      Alerting system, artifact viewer, deadline tracking, demo attachments
+                    </div>
+                  </div>
+                  {/* Total */}
+                  <div className="border-t border-emerald-600/40 pt-3 mt-4 flex justify-between items-center">
+                    <span className="text-emerald-300/90 font-bold">TOTAL TO v1.2</span>
+                    <span className="text-emerald-300/90 font-bold text-lg">~10 weeks</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Investment Required */}
+              <div className="border border-green-600/50 bg-gradient-to-br from-green-900/30 to-emerald-900/20 p-4">
+                <div className="text-green-400/90 font-bold mb-4">💰 INVESTMENT TO v1.2:</div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm border-b border-green-700/30 pb-2">
+                    <span className="text-green-500/70">Development (10 weeks)</span>
+                    <span className="text-green-400/90 font-bold">$20,000</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm border-b border-green-700/30 pb-2">
+                    <span className="text-green-500/70">AI API & Infrastructure</span>
+                    <span className="text-green-400/90 font-bold">$3,000</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm border-b border-green-700/30 pb-2">
+                    <span className="text-green-500/70">Testing & QA</span>
+                    <span className="text-green-400/90 font-bold">$2,000</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 mt-2 border-t border-green-600/40">
+                    <span className="text-green-300/90 font-bold">Total to v1.2</span>
+                    <div className="text-right">
+                      <span className="text-green-300 font-bold text-xl">$25,000</span>
+                    </div>
+                  </div>
+                  <div className="text-green-600/40 text-xs mt-4 italic text-center">
+                    * Includes vision refinement, research & hypothesis testing
+                  </div>
+                </div>
+              </div>
+
+              {/* ROI Note */}
+              <div className="border border-yellow-700/40 bg-yellow-900/15 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl opacity-70">📊</span>
+                  <div>
+                    <div className="text-yellow-500/80 font-bold">EXPECTED ROI</div>
+                    <div className="text-yellow-600/60 text-sm">
+                      v1.2 makes EzReport <span className="text-yellow-500/80 font-bold">usable for small teams</span> and 
+                      <span className="text-yellow-500/80 font-bold"> paid pilots</span>. Custom reports, alerts, and artifacts 
+                      enable first steps toward <span className="text-yellow-500/80 font-bold">monetization</span> and 
+                      <span className="text-yellow-500/80 font-bold"> entry-level B2B use</span>.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Contributor Program Section */}
           <div className="border border-teal-700/60 bg-black mt-8">
             {/* Title */}
