@@ -25,6 +25,7 @@ export default function Home() {
   const [showCursor, setShowCursor] = useState(true);
   const [showBlackOverlay, setShowBlackOverlay] = useState(false);
   const [fadeOutOverlay, setFadeOutOverlay] = useState(false);
+  const [logoHovered, setLogoHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const primaryRgb = colorToRgb[colorScheme.primary] || '34, 197, 94';
@@ -81,12 +82,17 @@ export default function Home() {
     }
   };
 
-  // Dynamic colors based on state
-  const getTextColor = (isEz: boolean) => {
+  // Get logo colors based on state and hover
+  const getEzColor = () => {
     if (success) return colorScheme.secondary;
     if (error) return 'text-red-500';
-    if (isEz) return `${colorScheme.primary.replace('500', '800')} group-hover:text-zinc-700`;
-    return `text-zinc-700 group-hover:${colorScheme.primary.replace('500', '800')}`;
+    return logoHovered ? 'text-zinc-700' : colorScheme.primary.replace('-500', '-800');
+  };
+  
+  const getReportColor = () => {
+    if (success) return colorScheme.secondary;
+    if (error) return 'text-red-500';
+    return logoHovered ? colorScheme.primary.replace('-500', '-800') : 'text-zinc-700';
   };
 
   return (
@@ -97,7 +103,9 @@ export default function Home() {
       <div className="text-center">
         {/* Logo */}
         <h1 
-          className="group text-6xl md:text-8xl font-bold mb-16 tracking-tight cursor-default"
+          className="text-6xl md:text-8xl font-bold mb-16 tracking-tight cursor-default"
+          onMouseEnter={() => setLogoHovered(true)}
+          onMouseLeave={() => setLogoHovered(false)}
           style={{
             textShadow: success
               ? `0 0 20px rgba(${primaryRgb}, 1), 0 0 40px rgba(${primaryRgb}, 0.8), 0 0 60px rgba(${primaryRgb}, 0.6), 0 0 100px rgba(${primaryRgb}, 0.4)`
@@ -106,12 +114,8 @@ export default function Home() {
               : 'none',
           }}
         >
-          <span className={`transition-colors duration-500 ${
-            success ? colorScheme.secondary : error ? 'text-red-500' : `${colorScheme.primary.replace('-500', '-800')} group-hover:text-zinc-700`
-          }`}>ez</span>
-          <span className={`transition-colors duration-500 ${
-            success ? colorScheme.secondary : error ? 'text-red-500' : `text-zinc-700 group-hover:${colorScheme.primary.replace('-500', '-800')}`
-          }`}>report</span>
+          <span className={`transition-colors duration-500 ${getEzColor()}`}>ez</span>
+          <span className={`transition-colors duration-500 ${getReportColor()}`}>report</span>
         </h1>
 
         {/* Terminal input */}
@@ -158,6 +162,11 @@ export default function Home() {
           }`}
         >
           {success ? 'access granted' : error ? 'access denied' : 'enter access code'}
+        </p>
+
+        {/* Slogan */}
+        <p className="mt-16 text-sm font-bold text-green-600/70 tracking-widest uppercase">
+          Stop Reporting. Start Executing.
         </p>
       </div>
 

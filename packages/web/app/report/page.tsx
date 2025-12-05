@@ -5,7 +5,7 @@ import {
   ConsoleHeading,
   Breadcrumb,
 } from '@/components/console';
-import { generatePartnerReport } from '@/lib/apiClient';
+import { generatePartnerReport, publishToNotion } from '@/lib/apiClient';
 import { useColor } from '@/lib/colorContext';
 
 // ═══════════════════════════════════════════════════════════════
@@ -426,18 +426,6 @@ function StyledReport({ markdown }: { markdown: string }) {
         ))}
       </div>
 
-      {/* Copy Button */}
-      <div className="flex justify-end pt-4">
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(markdown);
-          }}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-mono ${colorScheme.primary} opacity-60 border ${colorScheme.border}/20 rounded hover:${colorScheme.border}/40 hover:opacity-80 hover:${colorScheme.accent}/5 transition-all`}
-        >
-          <span>📋</span>
-          <span>копировать markdown</span>
-        </button>
-      </div>
     </div>
   );
 }
@@ -446,8 +434,10 @@ export default function ReportPage() {
   const { colorScheme } = useColor();
   const [report, setReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collectedData, setCollectedData] = useState<unknown>(null);
+  const [notionUrl, setNotionUrl] = useState<string | null>(null);
   const [templateWidth, setTemplateWidth] = useState(500);
   const templateRef = useRef<HTMLDivElement>(null);
 
@@ -485,6 +475,7 @@ export default function ReportPage() {
 
     setIsGenerating(true);
     setError(null);
+    setNotionUrl(null);
 
     try {
       const response = await generatePartnerReport(collectedData);
@@ -500,6 +491,34 @@ export default function ReportPage() {
       console.error('Report generation failed:', err);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handlePublishToNotion = async () => {
+    if (!report) {
+      setError('Нет отчёта для публикации.');
+      return;
+    }
+
+    setIsPublishing(true);
+    setError(null);
+
+    try {
+      // Extract title from markdown (first # heading)
+      const titleMatch = report.match(/^#\s+(.+?)$/m);
+      const title = titleMatch 
+        ? titleMatch[1].replace(/[✅🚀📊🏆📦🎯⚠️❓]/g, '').trim()
+        : `Sprint Report ${new Date().toLocaleDateString('ru-RU')}`;
+
+      const response = await publishToNotion(title, report);
+      setNotionUrl(response.pageUrl);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Publish to Notion failed:', err);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -521,9 +540,69 @@ export default function ReportPage() {
           </div>
         )}
 
+        {/* Notion URL Success Message */}
+        {notionUrl && (
+          <div className={`mb-6 border ${colorScheme.border}/30 bg-gradient-to-r from-green-500/10 to-transparent p-4 rounded-lg`}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">✅</span>
+              <div>
+                <div className={`font-mono text-sm ${colorScheme.secondary}`}>Опубликовано в Notion!</div>
+                <a 
+                  href={notionUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 font-mono text-sm"
+                >
+                  {notionUrl}
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Template Preview or Generated Report */}
         {report ? (
-          <StyledReport markdown={report} />
+          <>
+            <StyledReport markdown={report} />
+            
+            {/* Action Buttons */}
+            <div className="flex justify-center gap-4 pt-4 mb-8">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(report);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-mono ${colorScheme.primary} opacity-60 border ${colorScheme.border}/20 rounded hover:${colorScheme.border}/40 hover:opacity-80 transition-all`}
+              >
+                <span>📋</span>
+                <span>копировать markdown</span>
+              </button>
+              
+              {notionUrl ? (
+                <a
+                  href={notionUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-mono border rounded transition-all text-green-400 border-green-500/30 hover:border-green-500/50 hover:text-green-300"
+                >
+                  <span>✅</span>
+                  <span>открыть в Notion →</span>
+                </a>
+              ) : (
+                <button
+                  onClick={handlePublishToNotion}
+                  disabled={isPublishing}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-mono border rounded transition-all ${
+                    isPublishing 
+                      ? 'text-purple-400 border-purple-500/30 animate-pulse cursor-wait' 
+                      : `${colorScheme.primary} border-${colorScheme.border}/20 hover:border-${colorScheme.border}/40 hover:opacity-80`
+                  }`}
+                >
+                  <span>{isPublishing ? '⏳' : '📤'}</span>
+                  <span>{isPublishing ? 'публикуем...' : 'опубликовать в Notion'}</span>
+                </button>
+              )}
+            </div>
+          </>
         ) : (
           <div className="mb-12" ref={templateRef}>
             {/* Compact Template Preview */}

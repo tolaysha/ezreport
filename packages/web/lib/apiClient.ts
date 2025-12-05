@@ -195,3 +195,37 @@ export async function generateExpertAnalysis(
 
   return response.json();
 }
+
+/**
+ * Publish to Notion response type
+ */
+export interface PublishToNotionResponse {
+  pageId: string;
+  pageUrl: string;
+  logs?: string[];
+}
+
+/**
+ * Publish report to Notion
+ */
+export async function publishToNotion(
+  title: string,
+  markdown: string
+): Promise<PublishToNotionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/publish-notion`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, markdown }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `API request failed: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json();
+}

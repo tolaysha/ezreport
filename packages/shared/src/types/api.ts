@@ -48,3 +48,14 @@ export interface AnalyzeResponse {
   logs?: string[];
 }
 
+export interface PublishToNotionParams {
+  title: string;
+  markdown: string;
+}
+
+export interface PublishToNotionResponse {
+  pageId: string;
+  pageUrl: string;
+  logs?: string[];
+}
+
