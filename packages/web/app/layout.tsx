@@ -5,6 +5,9 @@ import { ColorProvider } from '@/lib/colorContext';
 export const metadata: Metadata = {
   title: 'EzReport Web Console',
   description: 'Sprint Report Workflow Control Panel',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

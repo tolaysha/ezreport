@@ -219,6 +219,69 @@ function InDevelopmentPanel() {
 }
 
 // =============================================================================
+// Custom Question Panel
+// =============================================================================
+
+function CustomQuestionPanel() {
+  return (
+    <div className="border border-teal-500/30 bg-teal-500/5 p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-teal-400 font-mono text-sm">💬 ЗАДАТЬ ВОПРОС ПО ПРОЕКТУ</span>
+        <span className="text-teal-500/50 font-mono text-xs px-1.5 py-0.5 bg-teal-500/10 rounded">🤖 AI</span>
+        <span className="text-amber-500/70 font-mono text-xs px-2 py-0.5 border border-amber-500/30 rounded ml-auto">
+          🚧 в разработке
+        </span>
+      </div>
+      
+      <div className="space-y-4">
+        {/* Question Input */}
+        <div className="relative">
+          <textarea
+            disabled
+            placeholder="Введите ваш вопрос о проекте, спринте или команде..."
+            className="w-full bg-black/40 border border-teal-500/30 p-3 font-mono text-sm text-teal-400 placeholder:text-teal-500/40 resize-none h-24 focus:outline-none focus:border-teal-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </div>
+        
+        {/* Example Questions */}
+        <div className="border border-teal-500/20 bg-black/30 p-3">
+          <div className="text-teal-500/70 font-mono text-xs mb-2">Примеры вопросов:</div>
+          <ul className="space-y-1">
+            <li className="text-teal-400/60 font-mono text-xs flex items-start gap-2">
+              <span className="text-teal-500">•</span>
+              <span>Какие задачи в спринте несут наибольший риск?</span>
+            </li>
+            <li className="text-teal-400/60 font-mono text-xs flex items-start gap-2">
+              <span className="text-teal-500">•</span>
+              <span>Что можно улучшить в следующем спринте?</span>
+            </li>
+            <li className="text-teal-400/60 font-mono text-xs flex items-start gap-2">
+              <span className="text-teal-500">•</span>
+              <span>Насколько команда загружена в текущем спринте?</span>
+            </li>
+          </ul>
+        </div>
+        
+        {/* Submit Button (disabled) */}
+        <button
+          disabled
+          className="w-full border border-teal-500/50 text-teal-400 px-4 py-3 font-mono text-sm hover:bg-teal-500 hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-teal-400"
+        >
+          [ОТПРАВИТЬ] 🤖 Получить ответ от AI
+        </button>
+        
+        {/* Coming Soon Notice */}
+        <div className="text-center">
+          <div className="text-amber-400/60 font-mono text-xs">
+            ⏳ Функция находится в разработке и скоро будет доступна
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // Expert View Panel
 // =============================================================================
 
@@ -569,6 +632,9 @@ export function AnalysisPanel({
           selectedRole={selectedExpertRole}
         />
       )}
+
+      {/* Custom Question Section */}
+      <CustomQuestionPanel />
     </div>
   );
 }
