@@ -384,11 +384,17 @@ export default function DataPage() {
                   title="[ PREVIOUS SPRINT ]"
                   data={basicBoardData.previousSprint}
                   variant="previous"
+                  overview={analysisResult?.sprintOverviews?.find(
+                    o => o.sprintId === basicBoardData.previousSprint?.sprint.id
+                  )?.text}
                 />
                 <SprintCard
                   title="[ CURRENT SPRINT ]"
                   data={basicBoardData.currentSprint}
                   variant="current"
+                  overview={analysisResult?.sprintOverviews?.find(
+                    o => o.sprintId === basicBoardData.currentSprint?.sprint.id
+                  )?.text}
                 />
               </div>
 

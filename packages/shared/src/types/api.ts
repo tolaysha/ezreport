@@ -2,7 +2,8 @@
  * API request/response types used across CLI and Web.
  */
 
-import type { BasicBoardSprintData, SprintCardData } from './board';
+import type { BasicBoardSprintData } from './board';
+import type { SprintCardData } from './sprint';
 import type { SprintInfo } from './sprint';
 import type { VersionMeta } from './version';
 import type { StrategicAnalysis } from './analysis';

@@ -244,7 +244,7 @@ export function toSprintMeta(sprint: JiraSprint): SprintMeta {
   };
 }
 
-export function toSprintIssue(issue: JiraIssue): SprintIssue {
+export function toSprintIssue(issue: JiraIssue | { key: string; fields: Record<string, unknown> }): SprintIssue {
   return extractIssueData(issue.key, issue.fields as Record<string, unknown>);
 }
 

@@ -37,6 +37,8 @@ export interface SprintIssue {
   parentKey?: string;
   /** Epic key this issue belongs to */
   epicKey?: string;
+  /** Original estimate in seconds (from Jira timeoriginalestimate field) */
+  originalEstimateSeconds?: number | null;
 }
 
 /**

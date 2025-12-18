@@ -47,6 +47,20 @@ export interface CompletionPrediction {
   comment: string;
   /** Key risks that could affect completion */
   risks?: string[];
+  /** Total estimate hours for all sprint tasks */
+  totalEstimateHours?: number;
+  /** Remaining estimate hours for incomplete tasks */
+  remainingEstimateHours?: number;
+}
+
+/**
+ * AI-generated sprint overview (2 sentences).
+ */
+export interface SprintOverview {
+  /** Sprint ID this overview belongs to */
+  sprintId: string;
+  /** 2 sentences describing how sprint moves product toward version */
+  text: string;
 }
 
 /**
@@ -60,6 +74,8 @@ export interface StrategicAnalysis {
   demoRecommendations?: DemoRecommendation[];
   /** AI prediction of sprint completion */
   completionPrediction?: CompletionPrediction;
+  /** AI-generated overviews for sprints */
+  sprintOverviews?: SprintOverview[];
 }
 
 /**

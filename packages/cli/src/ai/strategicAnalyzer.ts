@@ -89,40 +89,74 @@ function buildStrategicAnalysisPrompt(
     : '## Версия продукта\nИнформация о версии недоступна.';
 
   const sprintInfo = `## Текущий спринт
+- ID: ${currentSprint.sprint.id}
 - Название: ${currentSprint.sprint.name}
 - Цель спринта: ${currentSprint.sprint.goal || 'Не указана'}
 - Даты: ${currentSprint.sprint.startDate || '?'} — ${currentSprint.sprint.endDate || '?'}`;
 
+  const formatEstimate = (seconds: number | null | undefined): string => {
+    if (!seconds) return '';
+    const hours = seconds / 3600;
+    if (hours >= 8) {
+      const days = Math.floor(hours / 8);
+      return ` [~${days}d]`;
+    }
+    return ` [~${hours.toFixed(1)}h]`;
+  };
+
   const currentIssuesList = currentSprint.issues
-    .map((i) => `- ${i.key}: ${i.summary} [${i.status}] (${i.storyPoints ?? 0} SP)${i.artifact ? ' 📎' : ''}`)
+    .map((i) => `- ${i.key}: ${i.summary} [${i.status}] (${i.storyPoints ?? 0} SP)${formatEstimate(i.originalEstimateSeconds)}${i.artifact ? ' 📎' : ''}`)
     .join('\n');
 
   const doneIssues = currentSprint.issues.filter((i) => i.statusCategory === 'done');
   const totalSP = currentSprint.issues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
   const doneSP = doneIssues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
+  
+  // Calculate time estimates
+  const totalEstimateHours = currentSprint.issues.reduce(
+    (sum, i) => sum + ((i.originalEstimateSeconds ?? 0) / 3600), 0
+  );
+  const doneEstimateHours = doneIssues.reduce(
+    (sum, i) => sum + ((i.originalEstimateSeconds ?? 0) / 3600), 0
+  );
+  const issuesWithEstimate = currentSprint.issues.filter(i => i.originalEstimateSeconds).length;
 
-  let demoIssuesSection = '';
+  let previousSprintSection = '';
   if (previousSprint) {
     const prevDoneIssues = previousSprint.issues.filter((i) => i.statusCategory === 'done');
+    previousSprintSection = `
+
+## Предыдущий спринт (для контекста)
+- ID: ${previousSprint.sprint.id}
+- Название: ${previousSprint.sprint.name}
+- Цель спринта: ${previousSprint.sprint.goal || 'Не указана'}`;
+    
     if (prevDoneIssues.length > 0) {
       const prevIssuesList = prevDoneIssues
         .map((i) => `- ${i.key}: ${i.summary} (${i.storyPoints ?? 0} SP)${i.artifact ? ' 📎 есть артефакт' : ''}`)
         .join('\n');
-      demoIssuesSection = `
+      previousSprintSection += `
 
-## Завершённые задачи для демонстрации (из ${previousSprint.sprint.name})
+### Завершённые задачи (${previousSprint.sprint.name})
 ${prevIssuesList}`;
     }
   }
 
+  let demoIssuesSection = '';
   if (doneIssues.length > 0) {
     const currentDoneList = doneIssues
       .map((i) => `- ${i.key}: ${i.summary} (${i.storyPoints ?? 0} SP)${i.artifact ? ' 📎 есть артефакт' : ''}`)
       .join('\n');
-    demoIssuesSection += `
+    demoIssuesSection = `
 
 ## Завершённые задачи текущего спринта (${currentSprint.sprint.name})
 ${currentDoneList}`;
+  }
+
+  // Build sprint IDs list for overviews
+  const sprintIds = [currentSprint.sprint.id];
+  if (previousSprint) {
+    sprintIds.push(previousSprint.sprint.id);
   }
 
   return `Проанализируй согласованность спринта с целями продукта и выбери лучшие задачи для демонстрации партнёрам.
@@ -130,8 +164,10 @@ ${currentDoneList}`;
 ${versionInfo}
 
 ${sprintInfo}
+${previousSprintSection}
 
 ## Задачи текущего спринта (${currentSprint.issues.length} задач, ${doneSP}/${totalSP} SP выполнено)
+### Оценки времени: ${doneEstimateHours.toFixed(1)}/${totalEstimateHours.toFixed(1)} часов выполнено (${issuesWithEstimate} задач с оценкой)
 ${currentIssuesList}
 ${demoIssuesSection}
 
@@ -152,11 +188,20 @@ ${demoIssuesSection}
   },
   "completionPrediction": {
     "confidencePercent": число от 0 до 100 (уверенность что ВСЕ задачи будут выполнены в срок),
-    "comment": "Объяснение предсказания (2-3 предложения). Учитывай текущий прогресс, количество задач в работе, сложность оставшихся задач.",
-    "risks": ["риск 1", "риск 2"] (факторы которые могут помешать выполнению)
+    "comment": "Объяснение предсказания (2-3 предложения). Учитывай текущий прогресс, количество задач в работе, сложность оставшихся задач И оценки времени (если указаны).",
+    "risks": ["риск 1", "риск 2"] (факторы которые могут помешать выполнению),
+    "totalEstimateHours": число (суммарная оценка времени всех задач в часах),
+    "remainingEstimateHours": число (суммарная оценка времени оставшихся задач в часах)
   },
   "overallScore": число от 0 до 100,
   "summary": "Краткое резюме для партнёров (2-3 предложения)",
+  "sprintOverviews": [
+    // Сгенерируй overview для каждого из этих спринтов: ${sprintIds.join(', ')}
+    {
+      "sprintId": "ID спринта (${sprintIds[0]}${sprintIds.length > 1 ? ` или ${sprintIds[1]}` : ''})",
+      "text": "Ровно 2 предложения, описывающие как этот спринт приближает продукт к цели версии. Конкретно, без воды."
+    }
+  ],
   "demoRecommendations": [
     {
       "issueKey": "ключ задачи",
@@ -183,6 +228,15 @@ function generateBasicAnalysis(
   const doneSP = doneIssues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
   const progressPercent = totalSP > 0 ? Math.round((doneSP / totalSP) * 100) : 0;
 
+  // Calculate time estimates
+  const totalEstimateHours = sprint.issues.reduce(
+    (sum, i) => sum + ((i.originalEstimateSeconds ?? 0) / 3600), 0
+  );
+  const remainingIssues = [...inProgressIssues, ...todoIssues];
+  const remainingEstimateHours = remainingIssues.reduce(
+    (sum, i) => sum + ((i.originalEstimateSeconds ?? 0) / 3600), 0
+  );
+
   const goalLevel = sprint.goalMatchLevel;
   let taskAlignment: AlignmentLevel = 'unknown';
   if (goalLevel === 'strong') taskAlignment = 'aligned';
@@ -201,6 +255,9 @@ function generateBasicAnalysis(
   }
   if (inProgressIssues.length > 3) {
     risks.push('Много задач в работе одновременно');
+  }
+  if (remainingEstimateHours > 40) {
+    risks.push(`Большой объём оставшейся работы (~${remainingEstimateHours.toFixed(0)}ч)`);
   }
 
   return {
@@ -221,6 +278,8 @@ function generateBasicAnalysis(
       confidencePercent: completionConfidence,
       comment: `Базовая оценка на основе прогресса (${progressPercent}%). Требуется AI-анализ для точного предсказания.`,
       risks: risks.length > 0 ? risks : undefined,
+      totalEstimateHours: totalEstimateHours > 0 ? totalEstimateHours : undefined,
+      remainingEstimateHours: remainingEstimateHours > 0 ? remainingEstimateHours : undefined,
     },
     overallScore: progressPercent,
     summary: `Спринт выполнен на ${progressPercent}%. ${sprint.goalMatchComment || ''}`,

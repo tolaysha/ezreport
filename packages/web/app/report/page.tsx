@@ -41,6 +41,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
   const gridCols = Math.floor((containerWidth - 10) / (PIXEL_SIZE + 1)) || 100;
   
   const [playerLane, setPlayerLane] = useState(2);
+  const [playerX, setPlayerX] = useState(PLAYER_X);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -49,6 +50,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
 
   const resetGame = useCallback(() => {
     setPlayerLane(2);
+    setPlayerX(PLAYER_X);
     setEnemies([]);
     setScore(0);
     setGameOver(false);
@@ -65,11 +67,15 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
         setPlayerLane(p => Math.max(0, p - 1));
       } else if (e.key === 'ArrowDown' || e.key === 's') {
         setPlayerLane(p => Math.min(NUM_LANES - 1, p + 1));
+      } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+        setPlayerX(x => Math.max(1, x - 2));
+      } else if (e.key === 'ArrowRight' || e.key === 'd') {
+        setPlayerX(x => Math.min(gridCols - 6, x + 2));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameOver, resetGame]);
+  }, [gameOver, resetGame, gridCols]);
 
   useEffect(() => {
     if (gameOver) return;
@@ -84,7 +90,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
 
         const playerY = 1 + playerLane * LANE_HEIGHT;
         const playerPixels = CAR_SHAPE.map(([dx, dy]) => ({
-          x: PLAYER_X + dx,
+          x: playerX + dx,
           y: playerY + dy,
         }));
 
@@ -122,7 +128,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
     }, GAME_TICK);
 
     return () => clearInterval(tick);
-  }, [gameOver, playerLane, score, nextId, gridCols]);
+  }, [gameOver, playerLane, playerX, score, nextId, gridCols]);
 
   // Build grid
   const grid: string[][] = Array.from({ length: GRID_ROWS }, () =>
@@ -149,7 +155,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
   // Player
   const playerY = 1 + playerLane * LANE_HEIGHT;
   CAR_SHAPE.forEach(([dx, dy]) => {
-    const px = PLAYER_X + dx;
+    const px = playerX + dx;
     const py = playerY + dy;
     if (py >= 0 && py < GRID_ROWS && px >= 0 && px < gridCols) {
       grid[py][px] = gameOver ? 'crash' : 'player';
@@ -176,7 +182,7 @@ function DodgeGame({ containerWidth }: { containerWidth: number }) {
         <span>SCORE:<span className="text-purple-400 ml-1">{score}</span></span>
         <span>HI:<span className="text-purple-300 ml-1">{highScore}</span></span>
         <span className="text-zinc-700">│</span>
-        <span className="text-zinc-600">{gameOver ? 'SPACE' : '↑↓'}</span>
+        <span className="text-zinc-600">{gameOver ? 'SPACE' : '←↑↓→'}</span>
       </div>
 
       {/* Game Grid */}

@@ -24,6 +24,7 @@ export const STANDARD_FIELDS = [
   'issuetype',
   'priority',
   'parent',
+  'timeoriginalestimate',
 ] as const;
 
 /**
@@ -170,6 +171,19 @@ export function extractEpicKey(fields: Record<string, JiraFieldValue>): string |
   return undefined;
 }
 
+/**
+ * Extract original estimate from fields.
+ * Returns the original estimate in seconds, or null if not set.
+ * Jira stores this in the 'timeoriginalestimate' field.
+ */
+export function extractOriginalEstimate(fields: Record<string, JiraFieldValue>): number | null {
+  const estimate = fields.timeoriginalestimate;
+  if (typeof estimate === 'number') {
+    return estimate;
+  }
+  return null;
+}
+
 // =============================================================================
 // Combined Extractor
 // =============================================================================
@@ -193,6 +207,8 @@ export function extractIssueData(issueKey: string, fields: Record<string, JiraFi
     priority: extractPriority(fields),
     parentKey: extractParentKey(fields),
     epicKey: extractEpicKey(fields),
+    originalEstimateSeconds: extractOriginalEstimate(fields),
   };
 }
+
 

@@ -27,6 +27,7 @@ export type {
   SprintTasksAlignment,
   DemoRecommendation,
   CompletionPrediction,
+  SprintOverview,
   StrategicAnalysis,
   GoalAlignmentResult,
 } from './analysis';

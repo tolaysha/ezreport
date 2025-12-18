@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import type { SprintCardData, SprintEpic } from '@/types/workflow';
-import { getGoalMatchColor, getGoalMatchLabel, getStatusColor } from './helpers';
+import { getStatusColor } from './helpers';
 
 interface SprintCardProps {
   title: string;
   data: SprintCardData | undefined;
   variant: 'previous' | 'current';
+  /** AI-generated overview (2 sentences) */
+  overview?: string;
 }
 
 // Helper to get issue type color
@@ -25,6 +27,25 @@ function getIssueTypeColor(type: string): string {
     default:
       return 'text-gray-400';
   }
+}
+
+// Helper to format estimate from seconds to human-readable
+function formatEstimate(seconds: number | null | undefined): string | null {
+  if (!seconds) return null;
+  const hours = seconds / 3600;
+  if (hours >= 8) {
+    const days = Math.floor(hours / 8);
+    const remainingHours = hours % 8;
+    if (remainingHours > 0) {
+      return `${days}d ${remainingHours.toFixed(0)}h`;
+    }
+    return `${days}d`;
+  }
+  if (hours >= 1) {
+    return `${hours.toFixed(hours % 1 === 0 ? 0 : 1)}h`;
+  }
+  const minutes = Math.round(seconds / 60);
+  return `${minutes}m`;
 }
 
 // Epic Item Component
@@ -61,6 +82,9 @@ function EpicItem({ epic }: { epic: SprintEpic }) {
                 [{issue.status}]
               </span>
               <span className="text-green-500/80 truncate">{issue.summary}</span>
+              {issue.originalEstimateSeconds && (
+                <span className="text-cyan-400/70 shrink-0">⏱{formatEstimate(issue.originalEstimateSeconds)}</span>
+              )}
             </div>
           ))}
         </div>
@@ -69,7 +93,7 @@ function EpicItem({ epic }: { epic: SprintEpic }) {
   );
 }
 
-export function SprintCard({ title, data, variant }: SprintCardProps) {
+export function SprintCard({ title, data, variant, overview }: SprintCardProps) {
   const [showAllIssues, setShowAllIssues] = useState(false);
   const [showEpics, setShowEpics] = useState(true);
 
@@ -94,8 +118,6 @@ export function SprintCard({ title, data, variant }: SprintCardProps) {
   const inProgressIssues = data.issues.filter((i) => i.statusCategory === 'indeterminate');
   const todoIssues = data.issues.filter((i) => i.statusCategory === 'new');
   const displayedIssues = showAllIssues ? data.issues : data.issues.slice(0, 5);
-  
-  const stats = data.statistics;
   const epics = data.epics;
 
   return (
@@ -140,53 +162,22 @@ export function SprintCard({ title, data, variant }: SprintCardProps) {
         )}
       </div>
 
-      {/* Statistics: By Type */}
-      {stats && Object.keys(stats.byType).length > 0 && (
-        <div className="mb-4">
-          <div className="text-green-500/70 font-mono text-xs mb-2">ПО ТИПАМ:</div>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(stats.byType).map(([type, count]) => (
-              <div key={type} className="border border-green-500/30 px-2 py-1 flex items-center gap-1">
-                <span className={`font-mono text-xs ${getIssueTypeColor(type)}`}>{type}</span>
-                <span className="text-green-400 font-mono text-xs font-bold">{count}</span>
-              </div>
-            ))}
+      {/* AI Overview */}
+      {overview && (
+        <div className="mb-4 border border-purple-500/30 bg-purple-500/5 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-purple-400/70 font-mono text-xs">OVERVIEW</span>
+            <span className="text-purple-400/80 font-mono text-xs px-1.5 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded">
+              🤖 AI
+            </span>
+          </div>
+          <div className="text-purple-400 font-mono text-sm italic">
+            {overview}
           </div>
         </div>
       )}
 
-      {/* Top Assignees */}
-      {stats && stats.topAssignees.length > 0 && (
-        <div className="mb-4">
-          <div className="text-green-500/70 font-mono text-xs mb-2">ТОП ИСПОЛНИТЕЛИ:</div>
-          <div className="flex flex-wrap gap-2">
-            {stats.topAssignees.map((assignee, idx) => (
-              <div key={assignee.name} className="border border-green-500/30 px-2 py-1 flex items-center gap-1">
-                <span className="text-yellow-400 font-mono text-xs">#{idx + 1}</span>
-                <span className="text-green-500 font-mono text-xs">{assignee.name}</span>
-                <span className="text-green-400 font-mono text-xs font-bold">({assignee.count})</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Statistics: By Status */}
-      {stats && Object.keys(stats.byStatus).length > 0 && (
-        <div className="mb-4">
-          <div className="text-green-500/70 font-mono text-xs mb-2">ПО СТАТУСАМ:</div>
-          <div className="flex flex-wrap gap-1">
-            {Object.entries(stats.byStatus).map(([status, count]) => (
-              <div key={status} className="border border-green-500/20 px-1.5 py-0.5">
-                <span className="text-green-500/70 font-mono text-xs">{status}: </span>
-                <span className="text-green-400 font-mono text-xs font-bold">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Issues Stats (legacy view) */}
+      {/* Issues Stats */}
       <div className="mb-4">
         <div className="text-green-500/70 font-mono text-xs mb-2">ЗАДАЧИ:</div>
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -248,6 +239,9 @@ export function SprintCard({ title, data, variant }: SprintCardProps) {
               <span className="text-green-500/90 truncate">{issue.summary}</span>
               {issue.storyPoints && (
                 <span className="text-green-500/50 shrink-0">({issue.storyPoints}sp)</span>
+              )}
+              {issue.originalEstimateSeconds && (
+                <span className="text-cyan-400/70 shrink-0">⏱{formatEstimate(issue.originalEstimateSeconds)}</span>
               )}
             </div>
           ))}
