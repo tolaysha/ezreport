@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { SprintCardData, SprintEpic } from '@/types/workflow';
+import type { SprintCardData, SprintEpic, DemoArtifact } from '@/types/workflow';
 import { getStatusColor } from './helpers';
 
 interface SprintCardProps {
@@ -93,9 +93,71 @@ function EpicItem({ epic }: { epic: SprintEpic }) {
   );
 }
 
+// Demo Artifact Item Component
+function ArtifactItem({ artifact, onImageClick }: { artifact: DemoArtifact; onImageClick: (url: string) => void }) {
+  return (
+    <div className="border border-orange-500/20 bg-orange-500/5 p-2">
+      <div className="flex items-start gap-2 mb-2">
+        <span className="text-orange-500/70 font-mono text-xs shrink-0">{artifact.issueKey}</span>
+        <span className="text-orange-400 font-mono text-xs truncate">{artifact.issueSummary}</span>
+      </div>
+      {artifact.commentExcerpt && (
+        <div className="text-orange-300/70 font-mono text-xs mb-2 italic">
+          &quot;{artifact.commentExcerpt}&quot;
+        </div>
+      )}
+      <div 
+        className="cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => onImageClick(artifact.imageUrl)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img 
+          src={artifact.thumbnailUrl || artifact.imageUrl} 
+          alt={artifact.filename}
+          className="max-w-full h-auto max-h-32 object-contain border border-orange-500/30"
+          onError={(e) => {
+            // Hide broken images
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-2 mt-1 text-xs font-mono text-orange-500/50">
+        <span>{artifact.filename}</span>
+        {artifact.author && <span>• {artifact.author}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Image Modal Component
+function ImageModal({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button 
+        className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
+        onClick={onClose}
+      >
+        ✕
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img 
+        src={imageUrl} 
+        alt="Demo artifact"
+        className="max-w-full max-h-full object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
 export function SprintCard({ title, data, variant, overview }: SprintCardProps) {
   const [showAllIssues, setShowAllIssues] = useState(false);
   const [showEpics, setShowEpics] = useState(true);
+  const [showArtifacts, setShowArtifacts] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   if (!data) {
     return (
@@ -217,6 +279,41 @@ export function SprintCard({ title, data, variant, overview }: SprintCardProps) 
             </div>
           )}
         </div>
+      )}
+
+      {/* Demo Artifacts Section */}
+      {data.demoArtifacts && data.demoArtifacts.length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowArtifacts(!showArtifacts);
+            }}
+            className="text-orange-500/70 font-mono text-xs mb-2 hover:text-orange-400 transition-colors flex items-center gap-1"
+          >
+            <span>{showArtifacts ? '▼' : '▶'}</span>
+            <span>📸 АРТЕФАКТЫ ({data.demoArtifacts.length}):</span>
+          </button>
+          {showArtifacts && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {data.demoArtifacts.map((artifact, idx) => (
+                <ArtifactItem 
+                  key={`${artifact.issueKey}-${idx}`} 
+                  artifact={artifact} 
+                  onImageClick={setSelectedImage}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <ImageModal 
+          imageUrl={selectedImage} 
+          onClose={() => setSelectedImage(null)} 
+        />
       )}
 
       {/* Issues List */}

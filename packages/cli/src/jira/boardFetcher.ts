@@ -4,7 +4,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 
-import type { SprintMeta, SprintIssue, VersionMeta, SprintEpic } from '@ezreport/shared';
+import type { SprintMeta, SprintIssue, VersionMeta, SprintEpic, DemoArtifact } from '@ezreport/shared';
 import { JIRA_CONFIG } from '../config';
 import { logger } from '../utils/logger';
 import type {
@@ -391,6 +391,172 @@ export async function fetchProjectAndActiveVersion(
 
   result.activeVersion = toVersionMeta(activeVersion, progressPercent);
   return result;
+}
+
+// =============================================================================
+// Demo Artifacts Fetching
+// =============================================================================
+
+/**
+ * Jira comment with content and attachments.
+ */
+interface JiraComment {
+  id: string;
+  body: {
+    type: string;
+    content: Array<{
+      type: string;
+      content?: Array<{
+        type: string;
+        text?: string;
+        attrs?: {
+          id?: string;
+          url?: string;
+        };
+      }>;
+    }>;
+  };
+  author: {
+    displayName: string;
+  };
+  created: string;
+}
+
+/**
+ * Jira attachment.
+ */
+interface JiraAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  content: string; // URL to download
+  thumbnail?: string; // Thumbnail URL
+}
+
+/**
+ * Extract plain text from Jira ADF (Atlassian Document Format) body.
+ */
+function extractTextFromAdf(body: JiraComment['body']): string {
+  const parts: string[] = [];
+  
+  for (const block of body.content || []) {
+    if (block.type === 'paragraph' && block.content) {
+      for (const inline of block.content) {
+        if (inline.type === 'text' && inline.text) {
+          parts.push(inline.text);
+        }
+      }
+    }
+  }
+  
+  return parts.join(' ').trim();
+}
+
+/**
+ * Extract media IDs from Jira ADF body.
+ */
+function extractMediaIdsFromAdf(body: JiraComment['body']): string[] {
+  const mediaIds: string[] = [];
+  
+  for (const block of body.content || []) {
+    if (block.type === 'mediaSingle' && block.content) {
+      for (const media of block.content) {
+        if (media.type === 'media' && media.attrs?.id) {
+          mediaIds.push(media.attrs.id);
+        }
+      }
+    }
+  }
+  
+  return mediaIds;
+}
+
+/**
+ * Fetch demo artifacts from issue comments.
+ * Looks for comments starting with "demo" (case-insensitive) that have image attachments.
+ */
+export async function fetchDemoArtifactsForIssues(
+  client: AxiosInstance,
+  issues: SprintIssue[],
+): Promise<DemoArtifact[]> {
+  const artifacts: DemoArtifact[] = [];
+  
+  for (const issue of issues) {
+    try {
+      // Fetch issue with comments and attachments
+      const response = await client.get<{
+        fields: {
+          comment: {
+            comments: JiraComment[];
+          };
+          attachment: JiraAttachment[];
+        };
+      }>(`/rest/api/3/issue/${issue.key}`, {
+        params: {
+          fields: 'comment,attachment',
+        },
+      });
+      
+      const comments = response.data.fields.comment?.comments || [];
+      const attachments = response.data.fields.attachment || [];
+      
+      // Get all image attachments
+      const imageAttachments = attachments.filter(att => att.mimeType.startsWith('image/'));
+      
+      // Find demo comments
+      for (const comment of comments) {
+        const text = extractTextFromAdf(comment.body);
+        
+        // Check if comment starts with "demo" (case-insensitive)
+        if (!text.toLowerCase().startsWith('demo')) {
+          continue;
+        }
+        
+        // Check if comment has media (images embedded)
+        const hasMedia = extractMediaIdsFromAdf(comment.body).length > 0;
+        
+        if (hasMedia && imageAttachments.length > 0) {
+          // Demo comment has embedded media - take all images from this issue
+          // (Jira uses different IDs for media in ADF vs attachment IDs)
+          for (const att of imageAttachments) {
+            artifacts.push({
+              issueKey: issue.key,
+              issueSummary: issue.summary,
+              imageUrl: att.content,
+              thumbnailUrl: att.thumbnail,
+              filename: att.filename,
+              commentExcerpt: text.replace(/^demo\s*/i, '').trim(),
+              author: comment.author.displayName,
+              created: comment.created,
+            });
+          }
+        } else if (imageAttachments.length > 0) {
+          // Demo comment without media but issue has images - could be related
+          // Only include if comment mentions filename or is recent
+          for (const att of imageAttachments) {
+            if (text.toLowerCase().includes(att.filename.toLowerCase())) {
+              artifacts.push({
+                issueKey: issue.key,
+                issueSummary: issue.summary,
+                imageUrl: att.content,
+                thumbnailUrl: att.thumbnail,
+                filename: att.filename,
+                commentExcerpt: text.replace(/^demo\s*/i, '').trim(),
+                author: comment.author.displayName,
+                created: comment.created,
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`[fetchDemoArtifactsForIssues] Failed to fetch comments for ${issue.key}`, { error: message });
+    }
+  }
+  
+  logger.info(`[fetchDemoArtifactsForIssues] Found ${artifacts.length} demo artifacts from ${issues.length} issues`);
+  return artifacts;
 }
 
 

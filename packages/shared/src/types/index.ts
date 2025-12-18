@@ -4,6 +4,7 @@
 
 // Sprint types
 export type {
+  DemoArtifact,
   SprintMeta,
   SprintIssue,
   SprintEpic,

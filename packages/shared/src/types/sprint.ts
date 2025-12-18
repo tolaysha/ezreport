@@ -3,6 +3,28 @@
  */
 
 /**
+ * Demo artifact - an image from a demo comment.
+ */
+export interface DemoArtifact {
+  /** Issue key this artifact belongs to */
+  issueKey: string;
+  /** Issue summary for context */
+  issueSummary: string;
+  /** Image URL */
+  imageUrl: string;
+  /** Image thumbnail URL (if available) */
+  thumbnailUrl?: string;
+  /** Image filename */
+  filename: string;
+  /** Comment text excerpt */
+  commentExcerpt: string;
+  /** Comment author */
+  author: string;
+  /** Comment creation date */
+  created: string;
+}
+
+/**
  * Sprint metadata.
  * Contains essential sprint info for display.
  */
@@ -95,6 +117,8 @@ export interface SprintCardData {
   epics?: SprintEpic[];
   /** Statistics breakdown */
   statistics?: SprintStatistics;
+  /** Demo artifacts - images from comments starting with "demo" */
+  demoArtifacts?: DemoArtifact[];
 }
 
 /**

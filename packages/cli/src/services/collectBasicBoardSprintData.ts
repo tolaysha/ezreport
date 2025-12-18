@@ -44,6 +44,7 @@ import {
   groupIssuesByEpic,
   toSprintMeta,
   toSprintIssue,
+  fetchDemoArtifactsForIssues,
 } from '../jira/boardFetcher';
 
 
@@ -303,6 +304,15 @@ export async function collectBasicBoardSprintData(
       boardEpics,
     );
     result.availability.hasPreviousSprint = true;
+    
+    // Fetch demo artifacts for previous sprint
+    if (result.previousSprint.issues.length > 0) {
+      logger.info(`[collectBasicBoardSprintData] Fetching demo artifacts for previous sprint`);
+      result.previousSprint.demoArtifacts = await fetchDemoArtifactsForIssues(
+        client,
+        result.previousSprint.issues,
+      );
+    }
   }
 
   // Build current sprint card
@@ -314,6 +324,15 @@ export async function collectBasicBoardSprintData(
       boardEpics,
     );
     result.availability.hasCurrentSprint = true;
+    
+    // Fetch demo artifacts for current sprint
+    if (result.currentSprint.issues.length > 0) {
+      logger.info(`[collectBasicBoardSprintData] Fetching demo artifacts for current sprint`);
+      result.currentSprint.demoArtifacts = await fetchDemoArtifactsForIssues(
+        client,
+        result.currentSprint.issues,
+      );
+    }
   }
 
   // No AI calls in data collection step
